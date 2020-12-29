@@ -1,4 +1,4 @@
-import {Text, TextIterator} from "@codemirror/next/text"
+import {Text, TextIterator} from "@codemirror/text"
 
 const basicNormalize: (string: string) => string = typeof String.prototype.normalize == "function" ? x => x.normalize("NFKD") : x => x
 

@@ -1,6 +1,6 @@
-import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate, themeClass} from "@codemirror/next/view"
-import {Facet, combineConfig, Text, Extension, CharCategory} from "@codemirror/next/state"
-import {findClusterBreak} from "@codemirror/next/text"
+import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate, themeClass} from "@codemirror/view"
+import {Facet, combineConfig, Text, Extension, CharCategory} from "@codemirror/state"
+import {findClusterBreak} from "@codemirror/text"
 import {SearchCursor} from "./cursor"
 
 type HighlightOptions = {

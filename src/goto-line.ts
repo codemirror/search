@@ -1,6 +1,6 @@
-import {panels, Panel, getPanel, showPanel} from "@codemirror/next/panel"
-import {EditorSelection, StateField, StateEffect} from "@codemirror/next/state"
-import {EditorView, Command, themeClass} from "@codemirror/next/view"
+import {panels, Panel, getPanel, showPanel} from "@codemirror/panel"
+import {EditorSelection, StateField, StateEffect} from "@codemirror/state"
+import {EditorView, Command, themeClass} from "@codemirror/view"
 
 function createLineDialog(view: EditorView): Panel {
   let dom = document.createElement("form")
