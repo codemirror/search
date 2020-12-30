@@ -159,7 +159,7 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
     if (cur.value.from == from) main = ranges.length
     ranges.push(EditorSelection.range(cur.value.from, cur.value.to))
   }
-  dispatch(state.update({selection: new EditorSelection(ranges, main)}))
+  dispatch(state.update({selection: EditorSelection.create(ranges, main)}))
   return true
 }
 
