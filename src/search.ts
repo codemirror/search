@@ -343,7 +343,8 @@ function maybeAnnounceMatch(view: EditorView) {
   let panel = getPanel(view, createSearchPanel)
   if (!panel || !panel.dom.contains(view.root.activeElement)) return
   let live = panel.dom.querySelector("div[aria-live]")!
-  live.textContent = view.state.phrase("current match") + ". " + text
+  live.textContent = `${view.state.phrase("current match")}. ${text} ${view.state.phrase("on line")} ${
+    view.state.doc.lineAt(from).number}`
 }
 
 const baseTheme = EditorView.baseTheme({
