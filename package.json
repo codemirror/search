@@ -30,7 +30,7 @@
     "@codemirror/rangeset": "^0.17.0",
     "@codemirror/state": "^0.17.0",
     "@codemirror/text": "^0.17.0",
-    "@codemirror/view": "^0.17.0",
+    "@codemirror/view": "^0.17.7",
     "crelt": "^1.0.5"
   },
   "devDependencies": {

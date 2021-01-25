@@ -106,8 +106,11 @@ export const findNext = searchCommand((view, state) => {
   let {from, to} = view.state.selection.main
   let next = findNextMatch(view.state.doc, view.state.selection.main.from + 1, state.query)
   if (!next || next.from == from && next.to == to) return false
-  view.dispatch({selection: {anchor: next.from, head: next.to}, scrollIntoView: true})
-  maybeAnnounceMatch(view)
+  view.dispatch({
+    selection: {anchor: next.from, head: next.to},
+    scrollIntoView: true,
+    effects: announceMatch(view, next)
+  })
   return true
 })
 
@@ -134,8 +137,11 @@ export const findPrevious = searchCommand((view, {query}) => {
   let range = findPrevInRange(query, state.doc, 0, state.selection.main.to - 1) ||
     findPrevInRange(query, state.doc, state.selection.main.from + 1, state.doc.length)
   if (!range) return false
-  view.dispatch({selection: {anchor: range.from, head: range.to}, scrollIntoView: true})
-  maybeAnnounceMatch(view)
+  view.dispatch({
+    selection: {anchor: range.from, head: range.to},
+    scrollIntoView: true,
+    effects: announceMatch(view, range)
+  })
   return true
 })
 
@@ -176,8 +182,11 @@ export const replaceNext = searchCommand((view, {query}) => {
     let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - query.replace.length
     selection = {anchor: next.from - off, head: next.to - off}
   }
-  view.dispatch({changes, selection, scrollIntoView: !!selection})
-  if (next) maybeAnnounceMatch(view)
+  view.dispatch({
+    changes, selection,
+    scrollIntoView: !!selection,
+    effects: next ? announceMatch(view, next) : undefined
+  })
   return true
 })
 
@@ -311,8 +320,7 @@ function buildPanel(conf: {
     replaceField,
     button("replace", () => replaceNext(conf.view), [p("replace")]),
     button("replaceAll", () => replaceAll(conf.view), [p("replace all")]),
-    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": p("close")}, ["×"]),
-    elt("div", {style: "position: absolute; top: -10000px", "aria-live": "polite"})
+    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": p("close")}, ["×"])
   ])
   return panel
 }
@@ -321,9 +329,8 @@ const AnnounceMargin = 30
 
 const Break = /[\s\.,:;?!]/
 
-// FIXME this is a kludge
-function maybeAnnounceMatch(view: EditorView) {
-  let {from, to} = view.state.selection.main
+function announceMatch(view: EditorView, {from, to}: {from: number, to: number}) {
+  if (view.hasFocus) return undefined
   let lineStart = view.state.doc.lineAt(from).from, lineEnd = view.state.doc.lineAt(to).to
   let start = Math.max(lineStart, from - AnnounceMargin), end = Math.min(lineEnd, to + AnnounceMargin)
   let text = view.state.sliceDoc(start, end)
@@ -340,11 +347,8 @@ function maybeAnnounceMatch(view: EditorView) {
     }
   }
 
-  let panel = getPanel(view, createSearchPanel)
-  if (!panel || !panel.dom.contains(view.root.activeElement)) return
-  let live = panel.dom.querySelector("div[aria-live]")!
-  live.textContent = `${view.state.phrase("current match")}. ${text} ${view.state.phrase("on line")} ${
-    view.state.doc.lineAt(from).number}`
+  return EditorView.announce.of(`${view.state.phrase("current match")}. ${text} ${view.state.phrase("on line")} ${
+    view.state.doc.lineAt(from).number}`)
 }
 
 const baseTheme = EditorView.baseTheme({
