@@ -1,12 +1,24 @@
 import {panels, Panel, getPanel, showPanel} from "@codemirror/panel"
 import {EditorSelection, StateField, StateEffect} from "@codemirror/state"
 import {EditorView, Command, themeClass} from "@codemirror/view"
+import elt from "crelt"
 
 function createLineDialog(view: EditorView): Panel {
-  let dom = document.createElement("form")
-  dom.innerHTML = `<label>${view.state.phrase("Go to line:")} <input class=${themeClass("textfield")} name=line></label>
-<button class=${themeClass("button")} type=submit>${view.state.phrase("go")}</button>`
-  let input = dom.querySelector("input") as HTMLInputElement
+  let input = elt("input", {class: themeClass("textfield"), name: "line"}) as HTMLInputElement
+  let dom = elt("form", {
+    onkeydown: (event: KeyboardEvent) => {
+      if (event.keyCode == 27) { // Escape
+        event.preventDefault()
+        view.dispatch({effects: dialogEffect.of(false)})
+        view.focus()
+      } else if (event.keyCode == 13) { // Enter
+        event.preventDefault()
+        go()
+      }
+    },
+    onsubmit: go
+  }, elt("label", view.state.phrase("Go to line:"), " ", input), " ",
+     elt("button", {class: themeClass("button"), type: "submit"}, view.state.phrase("go")))
 
   function go() {
     let match = /^([+-])?(\d+)?(:\d+)?(%)?$/.exec(input.value)
@@ -30,18 +42,6 @@ function createLineDialog(view: EditorView): Panel {
     })
     view.focus()
   }
-  dom.addEventListener("keydown", event => {
-    if (event.keyCode == 27) { // Escape
-      event.preventDefault()
-      view.dispatch({effects: dialogEffect.of(false)})
-      view.focus()
-    } else if (event.keyCode == 13) { // Enter
-      event.preventDefault()
-      go()
-    }
-  })
-  dom.addEventListener("submit", go)
-
   return {dom, style: "gotoLine", pos: -10}
 }
 
