@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate, themeClass} from "@codemirror/view"
+import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate} from "@codemirror/view"
 import {Facet, combineConfig, Text, Extension, CharCategory} from "@codemirror/state"
 import {findClusterBreak} from "@codemirror/text"
 import {SearchCursor} from "./cursor"
@@ -32,9 +32,9 @@ const highlightConfig = Facet.define<HighlightOptions, Required<HighlightOptions
 })
 
 /// This extension highlights text that matches the selection. It uses
-/// the `$selectionMatch` theme class for the highlighting. When
+/// the `"cm-selectionMatch"` class for the highlighting. When
 /// `highlightWordAroundCursor` is enabled, the word at the cursor
-/// itself will be highlighted with `selectionMatch.main`.
+/// itself will be highlighted with `"cm-selectionMatch-main"`.
 export function highlightSelectionMatches(options?: HighlightOptions): Extension {
   let ext = [defaultTheme, matchHighlighter]
   if (options) ext.push(highlightConfig.of(options))
@@ -57,8 +57,8 @@ function wordAt(doc: Text, pos: number, check: (ch: string) => CharCategory) {
   return from == to ? null : line.text.slice(from, to)
 }
 
-const matchDeco = Decoration.mark({class: themeClass("selectionMatch")})
-const mainMatchDeco = Decoration.mark({class: themeClass("selectionMatch.main")})
+const matchDeco = Decoration.mark({class: "cm-selectionMatch"})
+const mainMatchDeco = Decoration.mark({class: "cm-selectionMatch cm-selectionMatch-main"})
 
 const matchHighlighter = ViewPlugin.fromClass(class {
   decorations: DecorationSet
@@ -109,6 +109,6 @@ const matchHighlighter = ViewPlugin.fromClass(class {
 })
 
 const defaultTheme = EditorView.baseTheme({
-  "$selectionMatch": { backgroundColor: "#99ff7780" },
-  "$searchMatch $selectionMatch": {backgroundColor: "transparent"}
+  ".cm-selectionMatch": { backgroundColor: "#99ff7780" },
+  ".cm-searchMatch .cm-selectionMatch": {backgroundColor: "transparent"}
 })

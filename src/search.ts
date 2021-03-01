@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet, themeClass,
+import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
 import {StateField, StateEffect, EditorSelection, SelectionRange, StateCommand, Prec} from "@codemirror/state"
 import {panels, Panel, showPanel, getPanel} from "@codemirror/panel"
@@ -49,8 +49,8 @@ class SearchState {
   constructor(readonly query: Query, readonly panel: readonly ((view: EditorView) => Panel)[]) {}
 }
 
-const matchMark = Decoration.mark({class: themeClass("searchMatch")}),
-      selectedMatchMark = Decoration.mark({class: themeClass("searchMatch.selected")})
+const matchMark = Decoration.mark({class: "cm-searchMatch"}),
+      selectedMatchMark = Decoration.mark({class: "cm-searchMatch cm-searchMatch-selected"})
 
 const searchHighlighter = ViewPlugin.fromClass(class {
   decorations: DecorationSet
@@ -220,7 +220,7 @@ function createSearchPanel(view: EditorView) {
       ;(this.dom.querySelector("[name=search]") as HTMLInputElement).select()
     },
     pos: 80,
-    style: "search"
+    class: "cm-search"
   }
 }
 
@@ -272,7 +272,7 @@ function buildPanel(conf: {
     value: conf.query.search,
     placeholder: p("Find"),
     "aria-label": p("Find"),
-    class: themeClass("textfield"),
+    class: "cm-textfield",
     name: "search",
     onchange: update,
     onkeyup: update
@@ -281,7 +281,7 @@ function buildPanel(conf: {
     value: conf.query.replace,
     placeholder: p("Replace"),
     "aria-label": p("Replace"),
-    class: themeClass("textfield"),
+    class: "cm-textfield",
     name: "replace",
     onchange: update,
     onkeyup: update
@@ -307,7 +307,7 @@ function buildPanel(conf: {
     }
   }
   function button(name: string, onclick: () => void, content: (Node | string)[]) {
-    return elt("button", {class: themeClass("button"), name, onclick}, content)
+    return elt("button", {class: "cm-button", name, onclick}, content)
   }
   let panel = elt("div", {onkeydown: keydown}, [
     searchField,
@@ -351,7 +351,7 @@ function announceMatch(view: EditorView, {from, to}: {from: number, to: number})
 }
 
 const baseTheme = EditorView.baseTheme({
-  "$panel.search": {
+  ".cm-panel.cm-search": {
     padding: "2px 6px 4px",
     position: "relative",
     "& [name=close]": {
@@ -372,11 +372,11 @@ const baseTheme = EditorView.baseTheme({
     }
   },
 
-  "$$light $searchMatch": { backgroundColor: "#ffff0054" },
-  "$$dark $searchMatch": { backgroundColor: "#00ffff8a" },
+  "&light .cm-searchMatch": { backgroundColor: "#ffff0054" },
+  "&dark .cm-searchMatch": { backgroundColor: "#00ffff8a" },
 
-  "$$light $searchMatch.selected": { backgroundColor: "#ff6a0054" },
-  "$$dark $searchMatch.selected": { backgroundColor: "#ff00ff8a" }
+  "&light .cm-searchMatch-selected": { backgroundColor: "#ff6a0054" },
+  "&dark .cm-searchMatch-selected": { backgroundColor: "#ff00ff8a" }
 })
 
 const searchExtensions = [

@@ -1,10 +1,10 @@
 import {panels, Panel, getPanel, showPanel} from "@codemirror/panel"
 import {EditorSelection, StateField, StateEffect} from "@codemirror/state"
-import {EditorView, Command, themeClass} from "@codemirror/view"
+import {EditorView, Command} from "@codemirror/view"
 import elt from "crelt"
 
 function createLineDialog(view: EditorView): Panel {
-  let input = elt("input", {class: themeClass("textfield"), name: "line"}) as HTMLInputElement
+  let input = elt("input", {class: "cm-textfield", name: "line"}) as HTMLInputElement
   let dom = elt("form", {
     onkeydown: (event: KeyboardEvent) => {
       if (event.keyCode == 27) { // Escape
@@ -18,7 +18,7 @@ function createLineDialog(view: EditorView): Panel {
     },
     onsubmit: go
   }, elt("label", view.state.phrase("Go to line:"), " ", input), " ",
-     elt("button", {class: themeClass("button"), type: "submit"}, view.state.phrase("go")))
+     elt("button", {class: "cm-button", type: "submit"}, view.state.phrase("go")))
 
   function go() {
     let match = /^([+-])?(\d+)?(:\d+)?(%)?$/.exec(input.value)
@@ -42,7 +42,7 @@ function createLineDialog(view: EditorView): Panel {
     })
     view.focus()
   }
-  return {dom, style: "gotoLine", pos: -10}
+  return {dom, class: "cm-gotoLine", pos: -10}
 }
 
 const dialogEffect = StateEffect.define<boolean>()
@@ -80,7 +80,7 @@ export const gotoLine: Command = view => {
 }
 
 const baseTheme = EditorView.baseTheme({
-  "$panel.gotoLine": {
+  ".cm-panel.cm-gotoLine": {
     padding: "2px 6px 4px",
     "& label": { fontSize: "80%" }
   }
