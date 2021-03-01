@@ -232,8 +232,7 @@ export const openSearchPanel: Command = view => {
     if (!panel) return false
     ;(panel.dom.querySelector("[name=search]") as HTMLInputElement).focus()
   } else {
-    view.dispatch({effects: togglePanel.of(true),
-                   reconfigure: state ? undefined : {append: searchExtensions}})
+    view.dispatch({effects: [togglePanel.of(true), ...state ? [] : [StateEffect.appendConfig.of(searchExtensions)]]})
   }
   return true
 }

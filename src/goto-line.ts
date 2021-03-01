@@ -69,10 +69,10 @@ const dialogField = StateField.define<boolean>({
 export const gotoLine: Command = view => {
   let panel = getPanel(view, createLineDialog)
   if (!panel) {
-    view.dispatch({
-      reconfigure: view.state.field(dialogField, false) == null ? {append: [panels(), dialogField, baseTheme]} : undefined,
-      effects: dialogEffect.of(true)
-    })
+    let effects: StateEffect<unknown>[] = [dialogEffect.of(true)]
+    if (view.state.field(dialogField, false) == null)
+      effects.push(StateEffect.appendConfig.of([panels(), dialogField, baseTheme]))
+    view.dispatch({effects})
     panel = getPanel(view, createLineDialog)
   }
   if (panel) panel.dom.querySelector("input")!.focus()
