@@ -1,7 +1,7 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
 import {StateField, StateEffect, EditorSelection, SelectionRange, StateCommand, Prec} from "@codemirror/state"
-import {panels, Panel, showPanel, getPanel} from "@codemirror/panel"
+import {Panel, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
@@ -381,6 +381,5 @@ const baseTheme = EditorView.baseTheme({
 const searchExtensions = [
   searchState,
   Prec.override(searchHighlighter),
-  panels(),
   baseTheme
 ]

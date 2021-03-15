@@ -1,4 +1,4 @@
-import {panels, Panel, getPanel, showPanel} from "@codemirror/panel"
+import {Panel, getPanel, showPanel} from "@codemirror/panel"
 import {EditorSelection, StateField, StateEffect} from "@codemirror/state"
 import {EditorView, Command} from "@codemirror/view"
 import elt from "crelt"
@@ -72,7 +72,7 @@ export const gotoLine: Command = view => {
   if (!panel) {
     let effects: StateEffect<unknown>[] = [dialogEffect.of(true)]
     if (view.state.field(dialogField, false) == null)
-      effects.push(StateEffect.appendConfig.of([panels(), dialogField, baseTheme]))
+      effects.push(StateEffect.appendConfig.of([dialogField, baseTheme]))
     view.dispatch({effects})
     panel = getPanel(view, createLineDialog)
   }
