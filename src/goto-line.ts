@@ -6,6 +6,7 @@ import elt from "crelt"
 function createLineDialog(view: EditorView): Panel {
   let input = elt("input", {class: "cm-textfield", name: "line"}) as HTMLInputElement
   let dom = elt("form", {
+    class: "cm-gotoLine",
     onkeydown: (event: KeyboardEvent) => {
       if (event.keyCode == 27) { // Escape
         event.preventDefault()
@@ -42,7 +43,7 @@ function createLineDialog(view: EditorView): Panel {
     })
     view.focus()
   }
-  return {dom, class: "cm-gotoLine", pos: -10}
+  return {dom, pos: -10}
 }
 
 const dialogEffect = StateEffect.define<boolean>()

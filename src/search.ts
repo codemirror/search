@@ -219,8 +219,7 @@ function createSearchPanel(view: EditorView) {
     mount() {
       ;(this.dom.querySelector("[name=search]") as HTMLInputElement).select()
     },
-    pos: 80,
-    class: "cm-search"
+    pos: 80
   }
 }
 
@@ -309,7 +308,7 @@ function buildPanel(conf: {
   function button(name: string, onclick: () => void, content: (Node | string)[]) {
     return elt("button", {class: "cm-button", name, onclick}, content)
   }
-  let panel = elt("div", {onkeydown: keydown}, [
+  let panel = elt("div", {onkeydown: keydown, class: "cm-search"}, [
     searchField,
     button("next", () => findNext(conf.view), [p("next")]),
     button("prev", () => findPrevious(conf.view), [p("previous")]),
