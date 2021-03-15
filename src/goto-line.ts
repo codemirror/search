@@ -54,7 +54,7 @@ const dialogField = StateField.define<boolean>({
     for (let e of tr.effects) if (e.is(dialogEffect)) value = e.value
     return value
   },
-  provide: f => showPanel.computeN([f], s => s.field(f) ? [createLineDialog] : [])
+  provide: f => showPanel.from(f, val => val ? createLineDialog : null)
 })
 
 /// Command that shows a dialog asking the user for a line number, and

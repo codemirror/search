@@ -1,7 +1,7 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
 import {StateField, StateEffect, EditorSelection, SelectionRange, StateCommand, Prec} from "@codemirror/state"
-import {Panel, showPanel, getPanel} from "@codemirror/panel"
+import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
@@ -33,20 +33,20 @@ const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
   create() {
-    return new SearchState(new Query("", "", false), [])
+    return new SearchState(new Query("", "", false), null)
   },
   update(value, tr) {
     for (let effect of tr.effects) {
       if (effect.is(setQuery)) value = new SearchState(effect.value, value.panel)
-      else if (effect.is(togglePanel)) value = new SearchState(value.query, effect.value ? [createSearchPanel] : [])
+      else if (effect.is(togglePanel)) value = new SearchState(value.query, effect.value ? createSearchPanel : null)
     }
     return value
   },
-  provide: f => showPanel.computeN([f], s => s.field(f).panel)
+  provide: f => showPanel.from(f, val => val.panel)
 })
 
 class SearchState {
-  constructor(readonly query: Query, readonly panel: readonly ((view: EditorView) => Panel)[]) {}
+  constructor(readonly query: Query, readonly panel: PanelConstructor | null) {}
 }
 
 const matchMark = Decoration.mark({class: "cm-searchMatch"}),
@@ -66,7 +66,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
   }
 
   highlight({query, panel}: SearchState) {
-    if (!panel.length || !query.valid) return Decoration.none
+    if (!panel || !query.valid) return Decoration.none
     let state = this.view.state, viewport = this.view.viewport
     let cursor = query.cursor(state.doc, Math.max(0, viewport.from - query.search.length),
                               Math.min(viewport.to + query.search.length, state.doc.length))
@@ -226,7 +226,7 @@ function createSearchPanel(view: EditorView) {
 /// Make sure the search panel is open and focused.
 export const openSearchPanel: Command = view => {
   let state = view.state.field(searchState, false)
-  if (state && state.panel.length) {
+  if (state && state.panel) {
     let panel = getPanel(view, createSearchPanel)
     if (!panel) return false
     ;(panel.dom.querySelector("[name=search]") as HTMLInputElement).focus()
@@ -239,7 +239,7 @@ export const openSearchPanel: Command = view => {
 /// Close the search panel.
 export const closeSearchPanel: Command = view => {
   let state = view.state.field(searchState, false)
-  if (!state || !state.panel.length) return false
+  if (!state || !state.panel) return false
   let panel = getPanel(view, createSearchPanel)
   if (panel && panel.dom.contains(view.root.activeElement)) view.focus()
   view.dispatch({effects: togglePanel.of(false)})
