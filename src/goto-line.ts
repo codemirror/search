@@ -17,7 +17,10 @@ function createLineDialog(view: EditorView): Panel {
         go()
       }
     },
-    onsubmit: go
+    onsubmit: (event: Event) => {
+      event.preventDefault()
+      go()
+    }
   }, elt("label", view.state.phrase("Go to line:"), " ", input), " ",
      elt("button", {class: "cm-button", type: "submit"}, view.state.phrase("go")))
 
