@@ -1,3 +1,9 @@
+## 0.18.1 (2021-03-15)
+
+### Bug fixes
+
+Fix an issue where entering an invalid input in the goto-line dialog would submit a form and reload the page.
+
 ## 0.18.0 (2021-03-03)
 
 ### Breaking changes
