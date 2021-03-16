@@ -313,7 +313,7 @@ function buildPanel(conf: {
     button("next", () => findNext(conf.view), [phrase("next")]),
     button("prev", () => findPrevious(conf.view), [phrase("previous")]),
     button("select", () => selectMatches(conf.view), [phrase("all")]),
-    elt("label", null, [caseField, "match case"]),
+    elt("label", null, [caseField, phrase("match case")]),
     elt("br"),
     replaceField,
     button("replace", () => replaceNext(conf.view), [phrase("replace")]),
