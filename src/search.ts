@@ -266,11 +266,11 @@ function buildPanel(conf: {
   query: Query,
   updateQuery: (query: Query) => void
 }) {
-  function p(phrase: string) { return conf.view.state.phrase(phrase) }
+  function phrase(phrase: string) { return conf.view.state.phrase(phrase) }
   let searchField = elt("input", {
     value: conf.query.search,
-    placeholder: p("Find"),
-    "aria-label": p("Find"),
+    placeholder: phrase("Find"),
+    "aria-label": phrase("Find"),
     class: "cm-textfield",
     name: "search",
     onchange: update,
@@ -278,8 +278,8 @@ function buildPanel(conf: {
   }) as HTMLInputElement
   let replaceField = elt("input", {
     value: conf.query.replace,
-    placeholder: p("Replace"),
-    "aria-label": p("Replace"),
+    placeholder: phrase("Replace"),
+    "aria-label": phrase("Replace"),
     class: "cm-textfield",
     name: "replace",
     onchange: update,
@@ -310,15 +310,15 @@ function buildPanel(conf: {
   }
   let panel = elt("div", {onkeydown: keydown, class: "cm-search"}, [
     searchField,
-    button("next", () => findNext(conf.view), [p("next")]),
-    button("prev", () => findPrevious(conf.view), [p("previous")]),
-    button("select", () => selectMatches(conf.view), [p("all")]),
+    button("next", () => findNext(conf.view), [phrase("next")]),
+    button("prev", () => findPrevious(conf.view), [phrase("previous")]),
+    button("select", () => selectMatches(conf.view), [phrase("all")]),
     elt("label", null, [caseField, "match case"]),
     elt("br"),
     replaceField,
-    button("replace", () => replaceNext(conf.view), [p("replace")]),
-    button("replaceAll", () => replaceAll(conf.view), [p("replace all")]),
-    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": p("close")}, ["×"])
+    button("replace", () => replaceNext(conf.view), [phrase("replace")]),
+    button("replaceAll", () => replaceAll(conf.view), [phrase("replace all")]),
+    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close")}, ["×"])
   ])
   return panel
 }
