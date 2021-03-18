@@ -104,7 +104,7 @@ function findNextMatch(doc: Text, from: number, query: Query) {
 /// end.
 export const findNext = searchCommand((view, state) => {
   let {from, to} = view.state.selection.main
-  let next = findNextMatch(view.state.doc, view.state.selection.main.from + 1, state.query)
+  let next = findNextMatch(view.state.doc, to, state.query)
   if (!next || next.from == from && next.to == to) return false
   view.dispatch({
     selection: {anchor: next.from, head: next.to},
@@ -133,9 +133,9 @@ function findPrevInRange(query: Query, doc: Text, from: number, to: number) {
 /// before the current main selection. Will wrap past the start
 /// of the document to start searching at the end again.
 export const findPrevious = searchCommand((view, {query}) => {
-  let {state} = view
-  let range = findPrevInRange(query, state.doc, 0, state.selection.main.to - 1) ||
-    findPrevInRange(query, state.doc, state.selection.main.from + 1, state.doc.length)
+  let {state} = view, {from, to} = state.selection.main
+  let range = findPrevInRange(query, state.doc, 0, from) ||
+    findPrevInRange(query, state.doc, to, state.doc.length)
   if (!range) return false
   view.dispatch({
     selection: {anchor: range.from, head: range.to},

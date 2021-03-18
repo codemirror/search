@@ -49,4 +49,8 @@ describe("SearchCursor", () => {
   it("can search an empty document", () => {
     testMatches(new SearchCursor(Text.empty, "aaaa"), [])
   })
+
+  it("doesn't return overlapping results", () => {
+    testMatches(new SearchCursor(Text.of(["fofofofo"]), "fofo"), [[0, 4], [4, 8]])
+  })
 })
