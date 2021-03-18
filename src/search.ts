@@ -1,31 +1,143 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
-import {StateField, StateEffect, EditorSelection, SelectionRange, StateCommand, Prec} from "@codemirror/state"
+import {StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
 import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
 import {SearchCursor} from "./cursor"
-import {RegExpCursor} from "./regexp"
+import {RegExpCursor, validRegExp} from "./regexp"
 import {gotoLine} from "./goto-line"
 
 export {highlightSelectionMatches} from "./selection-match"
 export {SearchCursor, RegExpCursor, gotoLine}
 
-class Query {
+type SearchResult = typeof SearchCursor.prototype.value
+
+abstract class Query<Result extends SearchResult = SearchResult> {
   constructor(readonly search: string,
               readonly replace: string,
               readonly caseInsensitive: boolean) {}
 
   eq(other: Query) {
-    return this.search == other.search && this.replace == other.replace && this.caseInsensitive == other.caseInsensitive
+    return this.search == other.search && this.replace == other.replace &&
+      this.caseInsensitive == other.caseInsensitive && this.constructor == other.constructor
   }
 
-  cursor(doc: Text, from = 0, to = doc.length) {
+  abstract valid: boolean
+
+  abstract nextMatch(doc: Text, curFrom: number, curTo: number): Result | null
+
+  abstract prevMatch(doc: Text, curFrom: number, curTo: number): Result | null
+
+  abstract getReplacement(result: Result): string
+
+  abstract matchAll(doc: Text, limit: number): readonly Result[] | null
+
+  abstract highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void): void
+}
+
+const enum FindPrev { ChunkSize = 10000 }
+
+// FIXME resolve \n etc in input string. Check what CM5 is doing there.
+class StringQuery extends Query<SearchResult> {
+  private cursor(doc: Text, from = 0, to = doc.length) {
     return new SearchCursor(doc, this.search, from, to, this.caseInsensitive ? x => x.toLowerCase() : undefined)
   }
 
+  nextMatch(doc: Text, curFrom: number, curTo: number) {
+    let cursor = this.cursor(doc, curTo).next()
+    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
+    return cursor.done ? null : cursor.value
+  }
+
+  // Searching in reverse is, rather than implementing inverted search
+  // cursor, done by scanning chunk after chunk forward.
+  private prevMatchInRange(doc: Text, from: number, to: number) {
+    for (let pos = to;;) {
+      let start = Math.max(from, pos - FindPrev.ChunkSize - this.search.length)
+      let cursor = this.cursor(doc, start, pos), range: {from: number, to: number} | null = null
+      while (!cursor.next().done) range = cursor.value
+      if (range) return range
+      if (start == from) return null
+      pos -= FindPrev.ChunkSize
+    }
+  }
+
+  prevMatch(doc: Text, curFrom: number, curTo: number) {
+    return this.prevMatchInRange(doc, 0, curFrom) ||
+      this.prevMatchInRange(doc, curTo, doc.length)
+  }
+
+  // FIXME splicing of $1?
+  getReplacement(_result: SearchResult) { return this.replace }
+
+  matchAll(doc: Text, limit: number) {
+    let cursor = this.cursor(doc), ranges = []
+    while (!cursor.nextAfter().done) {
+      if (ranges.length >= limit) return null
+      ranges.push(cursor.value)
+    }
+    return ranges
+  }
+
+  highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
+    let cursor = this.cursor(doc, Math.max(0, from - this.search.length),
+                             Math.min(to + this.search.length, doc.length))
+    while (!cursor.nextAfter().done) add(cursor.value.from, cursor.value.to)
+  }
+
   get valid() { return !!this.search }
+}
+
+const enum RegExp { HighlightMargin = 250 }
+
+type RegExpResult = typeof RegExpCursor.prototype.value
+
+class RegExpQuery extends Query<RegExpResult> {
+  valid: boolean
+
+  constructor(search: string, replace: string, caseInsensitive: boolean) {
+    super(search, replace, caseInsensitive)
+    this.valid = !!search && validRegExp(search)
+  }
+
+  private cursor(doc: Text, from: number = 0, to: number = doc.length) {
+    return new RegExpCursor(doc, this.search, this.caseInsensitive ? {ignoreCase: true} : undefined, from, to)
+  }
+
+  nextMatch(doc: Text, curFrom: number, curTo: number) {
+    let cursor = this.cursor(doc, curTo).next()
+    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
+    return cursor.done ? null : cursor.value
+  }
+
+  prevMatch(doc: Text, curFrom: number, curTo: number) {
+    return null
+  }
+
+  getReplacement(result: RegExpResult) {
+    return this.replace.replace(/\$([$&\d+])/g, (m, i) =>
+      i == "$" ? "$"
+      : i == "&" ? result.match[0]
+      : i != "0" && +i < result.match.length ? result.match[i]
+      : m)
+  }
+
+  matchAll(doc: Text, limit: number) {
+    let cursor = this.cursor(doc), ranges = []
+    while (!cursor.next().done) {
+      if (ranges.length >= limit) return null
+      ranges.push(cursor.value)
+    }
+    return ranges
+  }
+
+  highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
+    let cursor = this.cursor(doc, Math.max(0, from - RegExp.HighlightMargin),
+                             Math.min(to + RegExp.HighlightMargin, doc.length))
+    while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
+  }
 }
 
 const setQuery = StateEffect.define<Query>()
@@ -34,7 +146,7 @@ const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
   create() {
-    return new SearchState(new Query("", "", false), null)
+    return new SearchState(new StringQuery("", "", false), null)
   },
   update(value, tr) {
     for (let effect of tr.effects) {
@@ -68,14 +180,15 @@ const searchHighlighter = ViewPlugin.fromClass(class {
 
   highlight({query, panel}: SearchState) {
     if (!panel || !query.valid) return Decoration.none
-    let state = this.view.state, viewport = this.view.viewport
-    let cursor = query.cursor(state.doc, Math.max(0, viewport.from - query.search.length),
-                              Math.min(viewport.to + query.search.length, state.doc.length))
+    let {view} = this
     let builder = new RangeSetBuilder<Decoration>()
-    while (!cursor.nextAfter().done) {
-      let {from, to} = cursor.value
-      let selected = state.selection.ranges.some(r => r.from == from && r.to == to)
-      builder.add(from, to, selected ? selectedMatchMark : matchMark)
+    for (let i = 0, ranges = view.visibleRanges, l = ranges.length; i < l; i++) {
+      let {from, to} = ranges[i]
+      while (i < l - 1 && to > ranges[i + 1].from - RegExp.HighlightMargin) to = ranges[++i].to
+      query.highlight(view.state.doc, from, to, (from, to) => {
+        let selected = view.state.selection.ranges.some(r => r.from == from && r.to == to)
+        builder.add(from, to, selected ? selectedMatchMark : matchMark)
+      })
     }
     return builder.finish()
   }
@@ -90,22 +203,13 @@ function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Co
   }
 }
 
-function findNextMatch(doc: Text, from: number, query: Query) {
-  let cursor = query.cursor(doc, from).next()
-  if (cursor.done) {
-    cursor = query.cursor(doc, 0, from + query.search.length - 1).next()
-    if (cursor.done) return null
-  }
-  return cursor.value
-}
-
 /// Open the search panel if it isn't already open, and move the
 /// selection to the first match after the current main selection.
 /// Will wrap around to the start of the document when it reaches the
 /// end.
-export const findNext = searchCommand((view, state) => {
+export const findNext = searchCommand((view, {query}) => {
   let {from, to} = view.state.selection.main
-  let next = findNextMatch(view.state.doc, to, state.query)
+  let next = query.nextMatch(view.state.doc, from, to)
   if (!next || next.from == from && next.to == to) return false
   view.dispatch({
     selection: {anchor: next.from, head: next.to},
@@ -115,28 +219,12 @@ export const findNext = searchCommand((view, state) => {
   return true
 })
 
-const FindPrevChunkSize = 10000
-
-// Searching in reverse is, rather than implementing inverted search
-// cursor, done by scanning chunk after chunk forward.
-function findPrevInRange(query: Query, doc: Text, from: number, to: number) {
-  for (let pos = to;;) {
-    let start = Math.max(from, pos - FindPrevChunkSize - query.search.length)
-    let cursor = query.cursor(doc, start, pos), range: {from: number, to: number} | null = null
-    while (!cursor.next().done) range = cursor.value
-    if (range) return range
-    if (start == from) return null
-    pos -= FindPrevChunkSize
-  }
-}
-
 /// Move the selection to the previous instance of the search query,
 /// before the current main selection. Will wrap past the start
 /// of the document to start searching at the end again.
 export const findPrevious = searchCommand((view, {query}) => {
   let {state} = view, {from, to} = state.selection.main
-  let range = findPrevInRange(query, state.doc, 0, from) ||
-    findPrevInRange(query, state.doc, to, state.doc.length)
+  let range = query.prevMatch(state.doc, from, to)
   if (!range) return false
   view.dispatch({
     selection: {anchor: range.from, head: range.to},
@@ -148,10 +236,11 @@ export const findPrevious = searchCommand((view, {query}) => {
 
 /// Select all instances of the search query.
 export const selectMatches = searchCommand((view, {query}) => {
-  let cursor = query.cursor(view.state.doc), ranges: SelectionRange[] = []
-  while (!cursor.nextAfter().done) ranges.push(EditorSelection.range(cursor.value.from, cursor.value.to))
-  if (!ranges.length) return false
-  view.dispatch({selection: EditorSelection.create(ranges)})
+  let ranges = query.matchAll(view.state.doc, 1000)
+  if (!ranges || !ranges.length) return false
+  view.dispatch({
+    selection: EditorSelection.create(ranges.map(r => EditorSelection.range(r.from, r.to)))
+  })
   return true
 })
 
@@ -172,15 +261,17 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
 
 /// Replace the current match of the search query.
 export const replaceNext = searchCommand((view, {query}) => {
-  let {state} = view, next = findNextMatch(state.doc, state.selection.main.from, query)
+  let {state} = view, {from, to} = state.selection.main
+  let next = query.nextMatch(state.doc, from, from)
   if (!next) return false
-  let {from, to} = state.selection.main, changes = [], selection: {anchor: number, head: number} | undefined
+  let changes = [], selection: {anchor: number, head: number} | undefined, replacement: string | undefined
   if (next.from == from && next.to == to) {
-    changes.push({from: next.from, to: next.to, insert: query.replace})
-    next = findNextMatch(state.doc, next.to, query)
+    replacement = state.toText(query.getReplacement(next))
+    changes.push({from: next.from, to: next.to, insert: replacement})
+    next = query.nextMatch(state.doc, next.from, next.to)
   }
   if (next) {
-    let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - query.replace.length
+    let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - replacement!.length
     selection = {anchor: next.from - off, head: next.to - off}
   }
   view.dispatch({
@@ -194,11 +285,10 @@ export const replaceNext = searchCommand((view, {query}) => {
 /// Replace all instances of the search query with the given
 /// replacement.
 export const replaceAll = searchCommand((view, {query}) => {
-  let cursor = query.cursor(view.state.doc), changes = []
-  while (!cursor.nextAfter().done) {
-    let {from, to} = cursor.value
-    changes.push({from, to, insert: query.replace})
-  }
+  let changes = query.matchAll(view.state.doc, 1e9)!.map(match => {
+    let {from, to} = match
+    return {from, to, insert: query.getReplacement(match)}
+  })
   if (!changes.length) return false
   view.dispatch({changes})
   return true
@@ -292,8 +382,15 @@ function buildPanel(conf: {
     checked: !conf.query.caseInsensitive,
     onchange: update
   }) as HTMLInputElement
+  let reField = elt("input", {
+    type: "checkbox",
+    name: "re",
+    checked: conf.query instanceof RegExpQuery,
+    onchange: update
+  }) as HTMLInputElement
+
   function update() {
-    conf.updateQuery(new Query(searchField.value, replaceField.value, !caseField.checked))
+    conf.updateQuery(new (reField.checked ? RegExpQuery : StringQuery)(searchField.value, replaceField.value, !caseField.checked))
   }
   function keydown(e: KeyboardEvent) {
     if (runScopeHandlers(conf.view, e, "search-panel")) {
@@ -315,6 +412,7 @@ function buildPanel(conf: {
     button("prev", () => findPrevious(conf.view), [phrase("previous")]),
     button("select", () => selectMatches(conf.view), [phrase("all")]),
     elt("label", null, [caseField, phrase("match case")]),
+    elt("label", null, [reField, phrase("regexp")]),
     elt("br"),
     replaceField,
     button("replace", () => replaceNext(conf.view), [phrase("replace")]),
@@ -329,7 +427,6 @@ const AnnounceMargin = 30
 const Break = /[\s\.,:;?!]/
 
 function announceMatch(view: EditorView, {from, to}: {from: number, to: number}) {
-  if (view.hasFocus) return undefined
   let lineStart = view.state.doc.lineAt(from).from, lineEnd = view.state.doc.lineAt(to).to
   let start = Math.max(lineStart, from - AnnounceMargin), end = Math.min(lineEnd, to + AnnounceMargin)
   let text = view.state.sliceDoc(start, end)
@@ -364,8 +461,11 @@ const baseTheme = EditorView.baseTheme({
       padding: 0,
       margin: 0
     },
-    "& input, & button": {
-      margin: ".2em .5em .2em 0"
+    "& input, & button, & label": {
+      margin: ".2em .6em .2em 0"
+    },
+    "& input[type=checkbox]": {
+      marginRight: ".2em"
     },
     "& label": {
       fontSize: "80%"

@@ -2,6 +2,8 @@ import {Text, TextIterator} from "@codemirror/text"
 
 const empty = {from: -1, to: -1, match: /.*/.exec("")!}
 
+const baseFlags = "gm" + (/x/.unicode == null ? "" : "u")
+
 export class RegExpCursor implements Iterator<{from: number, to: number, match: RegExpExecArray}> {
   private iter!: TextIterator
   private re!: RegExp
@@ -14,7 +16,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
 
   constructor(text: Text, query: string, options?: {ignoreCase?: boolean}, from: number = 0, private to: number = text.length) {
     if (/\\[sWDnr]|\n|\r|\[\^/.test(query)) return new MultilineRegExpCursor(text, query, options, from, to) as any
-    this.re = new RegExp(query, "g" + (options?.ignoreCase ? "i" : ""))
+    this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
     this.iter = text.iter()
     let startLine = text.lineAt(from)
     this.curLineStart = startLine.from
@@ -104,7 +106,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
 
   constructor(private text: Text, query: string, options: {ignoreCase?: boolean} | undefined, from: number, private to: number) {
     this.matchPos = from
-    this.re = new RegExp(query, "gm" + (options?.ignoreCase ? "i" : ""))
+    this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
     this.flat = FlattenedDoc.get(text, from, this.chunkEnd(from + Chunk.Base))
   }
 
@@ -139,5 +141,14 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
         this.flat = FlattenedDoc.get(this.text, this.flat.from, this.chunkEnd(this.flat.from + this.flat.text.length * 2))
       }
     }
+  }
+}
+
+export function validRegExp(source: string) {
+  try {
+    new RegExp(source, baseFlags)
+    return true
+  } catch {
+    return false
   }
 }
