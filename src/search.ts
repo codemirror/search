@@ -6,10 +6,11 @@ import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
 import {SearchCursor} from "./cursor"
+import {RegExpCursor} from "./regexp"
 import {gotoLine} from "./goto-line"
 
 export {highlightSelectionMatches} from "./selection-match"
-export {SearchCursor, gotoLine}
+export {SearchCursor, RegExpCursor, gotoLine}
 
 class Query {
   constructor(readonly search: string,

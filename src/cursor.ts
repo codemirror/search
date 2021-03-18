@@ -1,6 +1,7 @@
 import {Text, TextIterator, codePointAt, codePointSize, fromCodePoint} from "@codemirror/text"
 
-const basicNormalize: (string: string) => string = typeof String.prototype.normalize == "function" ? x => x.normalize("NFKD") : x => x
+const basicNormalize: (string: string) => string = typeof String.prototype.normalize == "function"
+  ? x => x.normalize("NFKD") : x => x
 
 /// A search cursor provides an iterator over text matches in a
 /// document.
@@ -70,7 +71,7 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
         if (match) {
           this.value = match
           return this
-        }
+         }
         if (i == norm.length - 1) break
         if (pos == start && i < str.length && str.charCodeAt(i) == code) pos++
       }
