@@ -1,4 +1,4 @@
-import {Text, TextIterator} from "@codemirror/text"
+import {Text, TextIterator, codePointAt, codePointSize, fromCodePoint} from "@codemirror/text"
 
 const basicNormalize: (string: string) => string = typeof String.prototype.normalize == "function" ? x => x.normalize("NFKD") : x => x
 
@@ -47,7 +47,7 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
       this.bufferPos = 0
       this.buffer = this.iter.value
     }
-    return this.buffer.charCodeAt(this.bufferPos)
+    return codePointAt(this.buffer, this.bufferPos)
   }
 
   /// Look for the next match. Updates the iterator's
@@ -61,14 +61,8 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
         this.done = true
         return this
       }
-      let str = String.fromCharCode(next), start = this.bufferStart + this.bufferPos
-      this.bufferPos++
-      for (;;) {
-        let peek = this.peek()
-        if (peek < 0xDC00 || peek >= 0xE000) break
-        this.bufferPos++
-        str += String.fromCharCode(peek)
-      }
+      let str = fromCodePoint(next), start = this.bufferStart + this.bufferPos
+      this.bufferPos += codePointSize(next)
       let norm = this.normalize(str)
       for (let i = 0, pos = start;; i++) {
         let code = norm.charCodeAt(i)
