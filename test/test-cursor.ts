@@ -50,7 +50,14 @@ describe("SearchCursor", () => {
     testMatches(new SearchCursor(Text.empty, "aaaa"), [])
   })
 
-  it("doesn't return overlapping results", () => {
-    testMatches(new SearchCursor(Text.of(["fofofofo"]), "fofo"), [[0, 4], [4, 8]])
+  it("includes overlapping results", () => {
+    testMatches(new SearchCursor(Text.of(["fofofofo"]), "fofo"), [[0, 4], [2, 6], [4, 8]])
+  })
+
+  it("doesn't include overlapping results with nextAfter", () => {
+    let cursor = new SearchCursor(Text.of(["fofofofo"]), "fofo")
+    let matches = []
+    while (!cursor.nextAfter().done) matches.push([cursor.value.from, cursor.value.to])
+    ist(JSON.stringify(matches), "[[0,4],[4,8]]")
   })
 })

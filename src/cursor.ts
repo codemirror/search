@@ -69,13 +69,20 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
         let match = this.match(code, pos)
         if (match) {
           this.value = match
-          this.matches.length = 0
           return this
         }
         if (i == norm.length - 1) break
         if (pos == start && i < str.length && str.charCodeAt(i) == code) pos++
       }
     }
+  }
+
+  /// The `next` method iterates through all matches of the pattern,
+  /// even if they partially overlap. This method will only return
+  /// matches that start at or after the end of the previous match.
+  nextAfter() {
+    this.matches.length = 0
+    return this.next()
   }
 
   private match(code: number, pos: number) {

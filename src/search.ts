@@ -71,7 +71,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
     let cursor = query.cursor(state.doc, Math.max(0, viewport.from - query.search.length),
                               Math.min(viewport.to + query.search.length, state.doc.length))
     let builder = new RangeSetBuilder<Decoration>()
-    while (!cursor.next().done) {
+    while (!cursor.nextAfter().done) {
       let {from, to} = cursor.value
       let selected = state.selection.ranges.some(r => r.from == from && r.to == to)
       builder.add(from, to, selected ? selectedMatchMark : matchMark)
@@ -148,7 +148,7 @@ export const findPrevious = searchCommand((view, {query}) => {
 /// Select all instances of the search query.
 export const selectMatches = searchCommand((view, {query}) => {
   let cursor = query.cursor(view.state.doc), ranges: SelectionRange[] = []
-  while (!cursor.next().done) ranges.push(EditorSelection.range(cursor.value.from, cursor.value.to))
+  while (!cursor.nextAfter().done) ranges.push(EditorSelection.range(cursor.value.from, cursor.value.to))
   if (!ranges.length) return false
   view.dispatch({selection: EditorSelection.create(ranges)})
   return true
@@ -160,7 +160,7 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
   if (sel.ranges.length > 1 || sel.main.empty) return false
   let {from, to} = sel.main
   let ranges = [], main = 0
-  for (let cur = new SearchCursor(state.doc, state.sliceDoc(from, to)); !cur.next().done;) {
+  for (let cur = new SearchCursor(state.doc, state.sliceDoc(from, to)); !cur.nextAfter().done;) {
     if (ranges.length > 1000) return false
     if (cur.value.from == from) main = ranges.length
     ranges.push(EditorSelection.range(cur.value.from, cur.value.to))
@@ -194,7 +194,7 @@ export const replaceNext = searchCommand((view, {query}) => {
 /// replacement.
 export const replaceAll = searchCommand((view, {query}) => {
   let cursor = query.cursor(view.state.doc), changes = []
-  while (!cursor.next().done) {
+  while (!cursor.nextAfter().done) {
     let {from, to} = cursor.value
     changes.push({from, to, insert: query.replace})
   }
