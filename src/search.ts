@@ -39,10 +39,17 @@ abstract class Query<Result extends SearchResult = SearchResult> {
 
 const enum FindPrev { ChunkSize = 10000 }
 
-// FIXME resolve \n etc in input string. Check what CM5 is doing there.
 class StringQuery extends Query<SearchResult> {
+  unquoted: string
+
+  constructor(search: string, replace: string, caseInsensitive: boolean) {
+    super(search, replace, caseInsensitive)
+    this.unquoted = search.replace(/\\([nrt\\])/g,
+                                   (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
+  }
+
   private cursor(doc: Text, from = 0, to = doc.length) {
-    return new SearchCursor(doc, this.search, from, to, this.caseInsensitive ? x => x.toLowerCase() : undefined)
+    return new SearchCursor(doc, this.unquoted, from, to, this.caseInsensitive ? x => x.toLowerCase() : undefined)
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
@@ -55,7 +62,7 @@ class StringQuery extends Query<SearchResult> {
   // cursor, done by scanning chunk after chunk forward.
   private prevMatchInRange(doc: Text, from: number, to: number) {
     for (let pos = to;;) {
-      let start = Math.max(from, pos - FindPrev.ChunkSize - this.search.length)
+      let start = Math.max(from, pos - FindPrev.ChunkSize - this.unquoted.length)
       let cursor = this.cursor(doc, start, pos), range: {from: number, to: number} | null = null
       while (!cursor.nextOverlapping().done) range = cursor.value
       if (range) return range
@@ -69,7 +76,6 @@ class StringQuery extends Query<SearchResult> {
       this.prevMatchInRange(doc, curTo, doc.length)
   }
 
-  // FIXME splicing of $1?
   getReplacement(_result: SearchResult) { return this.replace }
 
   matchAll(doc: Text, limit: number) {
@@ -82,8 +88,8 @@ class StringQuery extends Query<SearchResult> {
   }
 
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
-    let cursor = this.cursor(doc, Math.max(0, from - this.search.length),
-                             Math.min(to + this.search.length, doc.length))
+    let cursor = this.cursor(doc, Math.max(0, from - this.unquoted.length),
+                             Math.min(to + this.unquoted.length, doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 
@@ -107,8 +113,8 @@ class RegExpQuery extends Query<RegExpResult> {
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = this.cursor(doc, curTo).nextOverlapping()
-    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).nextOverlapping()
+    let cursor = this.cursor(doc, curTo).next()
+    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
     return cursor.done ? null : cursor.value
   }
 
@@ -126,7 +132,7 @@ class RegExpQuery extends Query<RegExpResult> {
 
   matchAll(doc: Text, limit: number) {
     let cursor = this.cursor(doc), ranges = []
-    while (!cursor.nextOverlapping().done) {
+    while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
     }
@@ -136,7 +142,7 @@ class RegExpQuery extends Query<RegExpResult> {
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
     let cursor = this.cursor(doc, Math.max(0, from - RegExp.HighlightMargin),
                              Math.min(to + RegExp.HighlightMargin, doc.length))
-    while (!cursor.nextOverlapping().done) add(cursor.value.from, cursor.value.to)
+    while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 }
 
@@ -264,7 +270,7 @@ export const replaceNext = searchCommand((view, {query}) => {
   let {state} = view, {from, to} = state.selection.main
   let next = query.nextMatch(state.doc, from, from)
   if (!next) return false
-  let changes = [], selection: {anchor: number, head: number} | undefined, replacement: string | undefined
+  let changes = [], selection: {anchor: number, head: number} | undefined, replacement: Text | undefined
   if (next.from == from && next.to == to) {
     replacement = state.toText(query.getReplacement(next))
     changes.push({from: next.from, to: next.to, insert: replacement})
