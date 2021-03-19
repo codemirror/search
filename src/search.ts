@@ -63,7 +63,7 @@ class StringQuery extends Query<SearchResult> {
   private prevMatchInRange(doc: Text, from: number, to: number) {
     for (let pos = to;;) {
       let start = Math.max(from, pos - FindPrev.ChunkSize - this.unquoted.length)
-      let cursor = this.cursor(doc, start, pos), range: {from: number, to: number} | null = null
+      let cursor = this.cursor(doc, start, pos), range: SearchResult | null = null
       while (!cursor.nextOverlapping().done) range = cursor.value
       if (range) return range
       if (start == from) return null
@@ -118,8 +118,19 @@ class RegExpQuery extends Query<RegExpResult> {
     return cursor.done ? null : cursor.value
   }
 
+  private prevMatchInRange(doc: Text, from: number, to: number) {
+    for (let size = 1;; size++) {
+      let start = Math.max(from, to - size * FindPrev.ChunkSize)
+      let cursor = this.cursor(doc, start, to), range: RegExpResult | null = null
+      while (!cursor.next().done) range = cursor.value
+      if (range && (start == from || range.from > start + 10)) return range
+      if (start == from) return null
+    }
+  }
+
   prevMatch(doc: Text, curFrom: number, curTo: number) {
-    return null
+    return this.prevMatchInRange(doc, 0, curFrom) ||
+      this.prevMatchInRange(doc, curTo, doc.length)
   }
 
   getReplacement(result: RegExpResult) {
@@ -190,7 +201,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
     let builder = new RangeSetBuilder<Decoration>()
     for (let i = 0, ranges = view.visibleRanges, l = ranges.length; i < l; i++) {
       let {from, to} = ranges[i]
-      while (i < l - 1 && to > ranges[i + 1].from - RegExp.HighlightMargin) to = ranges[++i].to
+      while (i < l - 1 && to > ranges[i + 1].from - 2 * RegExp.HighlightMargin) to = ranges[++i].to
       query.highlight(view.state.doc, from, to, (from, to) => {
         let selected = view.state.selection.ranges.some(r => r.from == from && r.to == to)
         builder.add(from, to, selected ? selectedMatchMark : matchMark)
