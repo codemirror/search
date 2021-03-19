@@ -1,3 +1,19 @@
+## 0.18.2 (2021-03-19)
+
+### Bug fixes
+
+The search interface and cursor will no longer include overlapping matches (aligning with what all other editors are doing).
+
+### New features
+
+The package now exports a `RegExpCursor` which is a search cursor that matches regular expression patterns.
+
+The search/replace interface now allows the user to use regular expressions.
+
+The `SearchCursor` class now has a `nextOverlapping` method that includes matches that start inside the previous match.
+
+Basic backslash escapes (\n, \r, \t, and \\) are now accepted in string search patterns in the UI.
+
 ## 0.18.1 (2021-03-15)
 
 ### Bug fixes
