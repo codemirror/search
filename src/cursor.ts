@@ -56,6 +56,14 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
   /// [`done`](#search.SearchCursor.done) properties. Should be called
   /// at least once before using the cursor.
   next() {
+    while (this.matches.length) this.matches.pop()
+    return this.nextOverlapping()
+  }
+
+  /// The `next` method will ignore matches that partially overlap a
+  /// previous match. This method behaves like `next`, but includes
+  /// such matches.
+  nextOverlapping() {
     for (;;) {
       let next = this.peek()
       if (next < 0) {
@@ -76,14 +84,6 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
         if (pos == start && i < str.length && str.charCodeAt(i) == code) pos++
       }
     }
-  }
-
-  /// The `next` method iterates through all matches of the pattern,
-  /// even if they partially overlap. This method will only return
-  /// matches that start at or after the end of the previous match.
-  nextAfter() {
-    this.matches.length = 0
-    return this.next()
   }
 
   private match(code: number, pos: number) {

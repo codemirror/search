@@ -90,7 +90,7 @@ const matchHighlighter = ViewPlugin.fromClass(class {
     let deco = []
     for (let part of view.visibleRanges) {
       let cursor = new SearchCursor(state.doc, query, part.from, part.to)
-      while (!cursor.next().done) {
+      while (!cursor.nextOverlapping().done) {
         let {from, to} = cursor.value
         if (!check || ((from == 0 || check(state.sliceDoc(from - 1, from)) != CharCategory.Word) &&
                        (to == state.doc.length || check(state.sliceDoc(to, to + 1)) != CharCategory.Word))) {

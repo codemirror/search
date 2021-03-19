@@ -46,8 +46,8 @@ class StringQuery extends Query<SearchResult> {
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = this.cursor(doc, curTo).next()
-    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
+    let cursor = this.cursor(doc, curTo).nextOverlapping()
+    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).nextOverlapping()
     return cursor.done ? null : cursor.value
   }
 
@@ -57,7 +57,7 @@ class StringQuery extends Query<SearchResult> {
     for (let pos = to;;) {
       let start = Math.max(from, pos - FindPrev.ChunkSize - this.search.length)
       let cursor = this.cursor(doc, start, pos), range: {from: number, to: number} | null = null
-      while (!cursor.next().done) range = cursor.value
+      while (!cursor.nextOverlapping().done) range = cursor.value
       if (range) return range
       if (start == from) return null
       pos -= FindPrev.ChunkSize
@@ -74,7 +74,7 @@ class StringQuery extends Query<SearchResult> {
 
   matchAll(doc: Text, limit: number) {
     let cursor = this.cursor(doc), ranges = []
-    while (!cursor.nextAfter().done) {
+    while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
     }
@@ -84,7 +84,7 @@ class StringQuery extends Query<SearchResult> {
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
     let cursor = this.cursor(doc, Math.max(0, from - this.search.length),
                              Math.min(to + this.search.length, doc.length))
-    while (!cursor.nextAfter().done) add(cursor.value.from, cursor.value.to)
+    while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 
   get valid() { return !!this.search }
@@ -107,8 +107,8 @@ class RegExpQuery extends Query<RegExpResult> {
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = this.cursor(doc, curTo).next()
-    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
+    let cursor = this.cursor(doc, curTo).nextOverlapping()
+    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).nextOverlapping()
     return cursor.done ? null : cursor.value
   }
 
@@ -126,7 +126,7 @@ class RegExpQuery extends Query<RegExpResult> {
 
   matchAll(doc: Text, limit: number) {
     let cursor = this.cursor(doc), ranges = []
-    while (!cursor.next().done) {
+    while (!cursor.nextOverlapping().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
     }
@@ -136,7 +136,7 @@ class RegExpQuery extends Query<RegExpResult> {
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
     let cursor = this.cursor(doc, Math.max(0, from - RegExp.HighlightMargin),
                              Math.min(to + RegExp.HighlightMargin, doc.length))
-    while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
+    while (!cursor.nextOverlapping().done) add(cursor.value.from, cursor.value.to)
   }
 }
 
@@ -250,7 +250,7 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
   if (sel.ranges.length > 1 || sel.main.empty) return false
   let {from, to} = sel.main
   let ranges = [], main = 0
-  for (let cur = new SearchCursor(state.doc, state.sliceDoc(from, to)); !cur.nextAfter().done;) {
+  for (let cur = new SearchCursor(state.doc, state.sliceDoc(from, to)); !cur.next().done;) {
     if (ranges.length > 1000) return false
     if (cur.value.from == from) main = ranges.length
     ranges.push(EditorSelection.range(cur.value.from, cur.value.to))

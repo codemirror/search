@@ -57,7 +57,7 @@ describe("SearchCursor", () => {
   it("doesn't include overlapping results with nextAfter", () => {
     let cursor = new SearchCursor(Text.of(["fofofofo"]), "fofo")
     let matches = []
-    while (!cursor.nextAfter().done) matches.push([cursor.value.from, cursor.value.to])
+    while (!cursor.next().done) matches.push([cursor.value.from, cursor.value.to])
     ist(JSON.stringify(matches), "[[0,4],[4,8]]")
   })
 })
