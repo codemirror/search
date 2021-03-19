@@ -4,6 +4,9 @@ const empty = {from: -1, to: -1, match: /.*/.exec("")!}
 
 const baseFlags = "gm" + (/x/.unicode == null ? "" : "u")
 
+/// This class is similar to [`SearchCursor`](#search.SearchCursor)
+/// but searches for a regular expression pattern instead of a plain
+/// string.
 export class RegExpCursor implements Iterator<{from: number, to: number, match: RegExpExecArray}> {
   private iter!: TextIterator
   private re!: RegExp
@@ -11,9 +14,18 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
   private curLineStart!: number
   private matchPos!: number
 
+  /// Set to `true` when the cursor has reached the end of the search
+  /// range.
   done = false
+
+  /// Will contain an object with the extent of the match and the
+  /// match object when [`next`](#search.RegExpCursor.next)
+  /// sucessfully finds a match.
   value = empty
 
+  /// Create a cursor that will search the given range in the given
+  /// document. `query` should be the raw pattern (as you'd pass it to
+  /// `new RegExp`).
   constructor(text: Text, query: string, options?: {ignoreCase?: boolean}, from: number = 0, private to: number = text.length) {
     if (/\\[sWDnr]|\n|\r|\[\^/.test(query)) return new MultilineRegExpCursor(text, query, options, from, to) as any
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
@@ -42,6 +54,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
     else this.getLine(0)
   }
 
+  /// Move to the next match, if there is one.
   next() {
     for (let off = this.matchPos - this.curLineStart;;) {
       this.re.lastIndex = off

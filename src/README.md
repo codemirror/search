@@ -16,6 +16,8 @@
 
 @SearchCursor
 
+@RegExpCursor
+
 ### Selection matching
 
 @highlightSelectionMatches
