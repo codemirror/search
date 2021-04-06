@@ -1,5 +1,5 @@
 import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate} from "@codemirror/view"
-import {Facet, combineConfig, Text, Extension, CharCategory} from "@codemirror/state"
+import {Facet, combineConfig, Text, Extension, CharCategory, EditorSelection} from "@codemirror/state"
 import {findClusterBreak} from "@codemirror/text"
 import {SearchCursor} from "./cursor"
 
@@ -41,7 +41,7 @@ export function highlightSelectionMatches(options?: HighlightOptions): Extension
   return ext
 }
 
-function wordAt(doc: Text, pos: number, check: (ch: string) => CharCategory) {
+export function wordAt(doc: Text, pos: number, check: (ch: string) => CharCategory) {
   let line = doc.lineAt(pos)
   let from = pos - line.from, to = pos - line.from
   while (from > 0) {
@@ -54,7 +54,7 @@ function wordAt(doc: Text, pos: number, check: (ch: string) => CharCategory) {
     if (check(line.text.slice(to, next)) != CharCategory.Word) break
     to = next
   }
-  return from == to ? null : line.text.slice(from, to)
+  return EditorSelection.range(from + line.from, to + line.from)
 }
 
 const matchDeco = Decoration.mark({class: "cm-selectionMatch"})
@@ -79,7 +79,8 @@ const matchHighlighter = ViewPlugin.fromClass(class {
     if (range.empty) {
       if (!conf.highlightWordAroundCursor) return Decoration.none
       check = state.charCategorizer(range.head)
-      query = wordAt(state.doc, range.head, check)
+      let {from, to} = wordAt(state.doc, range.head, check)
+      query = state.sliceDoc(from, to)
       if (!query) return Decoration.none
     } else {
       let len = range.to - range.from
