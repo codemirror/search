@@ -6,6 +6,7 @@
 @findPrevious
 @selectMatches
 @selectSelectionMatches
+@selectNextOccurrence
 @replaceNext
 @replaceAll
 @openSearchPanel

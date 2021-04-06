@@ -1,5 +1,6 @@
 import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate} from "@codemirror/view"
-import {Facet, combineConfig, Text, Extension, CharCategory, EditorSelection} from "@codemirror/state"
+import {Facet, combineConfig, Text, Extension, CharCategory, EditorSelection,
+        EditorState, StateCommand} from "@codemirror/state"
 import {findClusterBreak} from "@codemirror/text"
 import {SearchCursor} from "./cursor"
 
@@ -113,3 +114,50 @@ const defaultTheme = EditorView.baseTheme({
   ".cm-selectionMatch": { backgroundColor: "#99ff7780" },
   ".cm-searchMatch .cm-selectionMatch": {backgroundColor: "transparent"}
 })
+
+// Select the words around the cursors.
+const selectWord: StateCommand = ({state, dispatch}) => {
+  let {selection} = state
+  let newSel = EditorSelection.create(selection.ranges.map(range => {
+    let check = state.charCategorizer(range.from)
+    return wordAt(state.doc, range.head, check)
+  }), selection.mainIndex)
+  if (newSel.eq(selection)) return false
+  dispatch(state.update({selection: newSel}))
+  return true
+}
+
+// Find next occurrence of query relative to last cursor. Wrap around
+// the document if there are no more matches.
+function findNextOccurrence(state: EditorState, query: string) {
+  let {ranges} = state.selection
+  let ahead = new SearchCursor(state.doc, query, ranges[ranges.length - 1].to).next()
+  if (!ahead.done) return ahead.value
+
+  let cursor = new SearchCursor(state.doc, query, 0, Math.max(0, ranges[ranges.length - 1].from - 1))
+  while (!cursor.next().done) {
+    if (!ranges.some(r => r.from === cursor.value.from))
+      return cursor.value
+  }
+  return null
+}
+
+/// Select next occurrence of the current selection.
+/// Expand selection to the word when selection range is empty.
+export const selectNextOccurrence: StateCommand = ({state, dispatch}) => {
+  let {ranges} = state.selection
+  if (ranges.some(sel => sel.from === sel.to)) return selectWord({state, dispatch})
+
+  let searchedText = state.sliceDoc(ranges[0].from, ranges[0].to)
+  if (state.selection.ranges.some(r => state.sliceDoc(r.from, r.to) != searchedText))
+    return false
+
+  let range = findNextOccurrence(state, searchedText)
+  if (!range) return false
+
+  dispatch(state.update({
+    selection: state.selection.addRange(EditorSelection.range(range.from, range.to)),
+    scrollIntoView: true
+  }))
+  return true
+}

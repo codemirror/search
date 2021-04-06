@@ -1,6 +1,6 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
-import {StateField, StateEffect, EditorSelection, StateCommand, Prec, EditorState} from "@codemirror/state"
+import {StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
 import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
@@ -8,10 +8,10 @@ import elt from "crelt"
 import {SearchCursor} from "./cursor"
 import {RegExpCursor, validRegExp} from "./regexp"
 import {gotoLine} from "./goto-line"
-import {wordAt} from "./selection-match"
+import {selectNextOccurrence} from "./selection-match"
 
 export {highlightSelectionMatches} from "./selection-match"
-export {SearchCursor, RegExpCursor, gotoLine}
+export {SearchCursor, RegExpCursor, gotoLine, selectNextOccurrence}
 
 type SearchResult = typeof SearchCursor.prototype.value
 
@@ -355,75 +355,13 @@ export const closeSearchPanel: Command = view => {
   return true
 }
 
-/// Select words around cursors.
-export const selectWord: Command = ({ state, dispatch }) => {
-  let ranges = state.selection.ranges.map(range => {
-    let check = state.charCategorizer(range.from)
-    return wordAt(state.doc, range.from, check)
-  })
-  
-  dispatch(state.update({
-    selection: EditorSelection.create(ranges, state.selection.mainIndex)
-  }))
-
-  return true
-}
-
-/// Find next occurrence of query relative to last cursor.
-/// Wrap around the document if there are no more matches.
-const findNextOccurrence = (state: EditorState, query: string) => {
-  let {ranges} = state.selection
-  let cursor = new SearchCursor(state.doc, query, ranges[ranges.length - 1].to)
-
-  let found = cursor.next()
-  if (!cursor.done) return found.value
-
-  cursor = new SearchCursor(state.doc, query, 0, Math.max(0, ranges[ranges.length - 1].from - 1))
-
-  while (true) {
-    found = cursor.next()
-    if (cursor.done) break
-    if (!ranges.find(r => r.from === found.value.from)) {
-      return found.value
-    }
-  }
-
-  return null
-}
-
-/// Select next occurrence of the current selection.
-/// Expand selection to the word when selection range is empty.
-export const selectNextOccurrence: Command = (view) => {
-  let {ranges} = view.state.selection
-  if (ranges.some(sel => sel.from === sel.to)) {
-    selectWord(view)
-    return true
-  }
-
-  let searchedText = view.state.sliceDoc(ranges[0].from, ranges[0].to)
-  if (view.state.selection.ranges.some(
-    range => view.state.sliceDoc(range.from, range.to) !== searchedText
-  )) {
-    return true
-  }
-
-  let range = findNextOccurrence(view.state, searchedText)
-
-  if (range) {
-    view.dispatch(view.state.update({
-      selection: view.state.selection.addRange(EditorSelection.range(range.from, range.to)),
-      scrollIntoView: true
-    }))
-  }
-  return true
-}
-
 /// Default search-related key bindings.
 ///
 ///  - Mod-f: [`openSearchPanel`](#search.openSearchPanel)
 ///  - F3, Mod-g: [`findNext`](#search.findNext)
 ///  - Shift-F3, Shift-Mod-g: [`findPrevious`](#search.findPrevious)
 ///  - Alt-g: [`gotoLine`](#search.gotoLine)
+///  - Mod-d: [`selectNextOccurrence`](#search.selectNextOccurrence)
 export const searchKeymap: readonly KeyBinding[] = [
   {key: "Mod-f", run: openSearchPanel, scope: "editor search-panel"},
   {key: "F3", run: findNext, shift: findPrevious, scope: "editor search-panel"},
