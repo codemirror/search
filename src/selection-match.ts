@@ -1,7 +1,6 @@
 import {EditorView, ViewPlugin, Decoration, DecorationSet, ViewUpdate} from "@codemirror/view"
-import {Facet, combineConfig, Text, Extension, CharCategory, EditorSelection,
+import {Facet, combineConfig, Extension, CharCategory, EditorSelection,
         EditorState, StateCommand} from "@codemirror/state"
-import {findClusterBreak} from "@codemirror/text"
 import {SearchCursor} from "./cursor"
 
 type HighlightOptions = {
@@ -42,22 +41,6 @@ export function highlightSelectionMatches(options?: HighlightOptions): Extension
   return ext
 }
 
-export function wordAt(doc: Text, pos: number, check: (ch: string) => CharCategory) {
-  let line = doc.lineAt(pos)
-  let from = pos - line.from, to = pos - line.from
-  while (from > 0) {
-    let prev = findClusterBreak(line.text, from, false)
-    if (check(line.text.slice(prev, from)) != CharCategory.Word) break
-    from = prev
-  }
-  while (to < line.length) {
-    let next = findClusterBreak(line.text, to)
-    if (check(line.text.slice(to, next)) != CharCategory.Word) break
-    to = next
-  }
-  return EditorSelection.range(from + line.from, to + line.from)
-}
-
 const matchDeco = Decoration.mark({class: "cm-selectionMatch"})
 const mainMatchDeco = Decoration.mark({class: "cm-selectionMatch cm-selectionMatch-main"})
 
@@ -79,10 +62,10 @@ const matchHighlighter = ViewPlugin.fromClass(class {
     let range = sel.main, query, check = null
     if (range.empty) {
       if (!conf.highlightWordAroundCursor) return Decoration.none
+      let word = state.wordAt(range.head)
+      if (!word) return Decoration.none
       check = state.charCategorizer(range.head)
-      let {from, to} = wordAt(state.doc, range.head, check)
-      query = state.sliceDoc(from, to)
-      if (!query) return Decoration.none
+      query = state.sliceDoc(word.from, word.to)
     } else {
       let len = range.to - range.from
       if (len < conf.minSelectionLength || len > 200) return Decoration.none
@@ -118,10 +101,9 @@ const defaultTheme = EditorView.baseTheme({
 // Select the words around the cursors.
 const selectWord: StateCommand = ({state, dispatch}) => {
   let {selection} = state
-  let newSel = EditorSelection.create(selection.ranges.map(range => {
-    let check = state.charCategorizer(range.from)
-    return wordAt(state.doc, range.head, check)
-  }), selection.mainIndex)
+  let newSel = EditorSelection.create(selection.ranges.map(
+    range => state.wordAt(range.head) || EditorSelection.cursor(range.head)
+  ), selection.mainIndex)
   if (newSel.eq(selection)) return false
   dispatch(state.update({selection: newSel}))
   return true

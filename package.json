@@ -28,7 +28,7 @@
   "dependencies": {
     "@codemirror/panel": "^0.18.1",
     "@codemirror/rangeset": "^0.18.0",
-    "@codemirror/state": "^0.18.0",
+    "@codemirror/state": "^0.18.6",
     "@codemirror/text": "^0.18.0",
     "@codemirror/view": "^0.18.0",
     "crelt": "^1.0.5"
