@@ -488,7 +488,8 @@ const baseTheme = EditorView.baseTheme({
       marginRight: ".2em"
     },
     "& label": {
-      fontSize: "80%"
+      fontSize: "80%",
+      whiteSpace: "pre"
     }
   },
 
