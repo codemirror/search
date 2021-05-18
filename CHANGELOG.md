@@ -1,3 +1,13 @@
+## 0.18.3 (2021-05-18)
+
+### Bug fixes
+
+Fix a bug where the first search command in a new editor wouldn't properly open the panel.
+
+### New features
+
+New command `selectNextOccurrence` that selects the next occurrence of the selected word (bound to Mod-d in the search keymap).
+
 ## 0.18.2 (2021-03-19)
 
 ### Bug fixes
