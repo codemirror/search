@@ -509,18 +509,19 @@ const baseTheme = EditorView.baseTheme({
 })
 
 export interface SearchConfig {
-  /// When true, search panel will be positioned on top of the editor
+  /// When set to true (Defaults is false), search panel will be positioned on top of the editor
   top?: boolean
 }
 
 export const searchConfig = Facet.define<SearchConfig, Required<SearchConfig>>({
   combine(configs) {
-    return combineConfig(configs, { })
+    return combineConfig(configs, { top: false }, { top: (a, b) => a || b })
   }
 })
 
 const searchExtensions = [
   searchState,
   Prec.override(searchHighlighter),
-  baseTheme
+  baseTheme,
+  searchConfig.of({top: false})
 ]
