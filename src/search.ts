@@ -335,13 +335,18 @@ function createSearchPanel(view: EditorView) {
 /// Make sure the search panel is open and focused.
 export const openSearchPanel: Command = view => {
   let state = view.state.field(searchState, false)
-  if (state && state.panel) {
-    let panel = getPanel(view, createSearchPanel)
-    if (!panel) return false
-    ;(panel.dom.querySelector("[name=search]") as HTMLInputElement).focus()
-  } else {
+  if (!state || !state.panel) {
     view.dispatch({effects: [togglePanel.of(true), ...state ? [] : [StateEffect.appendConfig.of(searchExtensions)]]})
   }
+
+  let panel = getPanel(view, createSearchPanel)
+  if (!panel) return false
+
+  let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
+  let {from, to} = view.state.selection.main
+  if (from != to) searchInput.value = view.state.sliceDoc(from, to)
+  searchInput.select()
+
   return true
 }
 
