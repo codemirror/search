@@ -1,6 +1,6 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
-import {StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
+import {StateField, StateEffect, EditorSelection, StateCommand, Prec, Facet, combineConfig} from "@codemirror/state"
 import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
@@ -314,6 +314,8 @@ export const replaceAll = searchCommand((view, {query}) => {
 
 function createSearchPanel(view: EditorView) {
   let {query} = view.state.field(searchState)
+  let {top} = view.state.facet(searchConfig)
+
   return {
     dom: buildPanel({
       view,
@@ -328,7 +330,8 @@ function createSearchPanel(view: EditorView) {
     mount() {
       ;(this.dom.querySelector("[name=search]") as HTMLInputElement).select()
     },
-    pos: 80
+    pos: 80,
+    top
   }
 }
 
@@ -503,6 +506,17 @@ const baseTheme = EditorView.baseTheme({
 
   "&light .cm-searchMatch-selected": { backgroundColor: "#ff6a0054" },
   "&dark .cm-searchMatch-selected": { backgroundColor: "#ff00ff8a" }
+})
+
+export interface SearchConfig {
+  /// When true, search panel will be positioned on top of the editor
+  top?: boolean
+}
+
+export const searchConfig = Facet.define<SearchConfig, Required<SearchConfig>>({
+  combine(configs) {
+    return combineConfig(configs, { })
+  }
 })
 
 const searchExtensions = [
