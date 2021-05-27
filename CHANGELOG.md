@@ -1,3 +1,11 @@
+## 0.18.4 (2021-05-27)
+
+### New features
+
+Initialize the search query to the current selection, when there is one, when opening the search dialog.
+
+Add a `searchConfig` function, supporting an option to put the search panel at the top of the editor.
+
 ## 0.18.3 (2021-05-18)
 
 ### Bug fixes
