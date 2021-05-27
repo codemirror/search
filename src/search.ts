@@ -1,6 +1,7 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
-import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
+import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec,
+        Facet, Extension} from "@codemirror/state"
 import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
@@ -12,6 +13,23 @@ import {selectNextOccurrence} from "./selection-match"
 
 export {highlightSelectionMatches} from "./selection-match"
 export {SearchCursor, RegExpCursor, gotoLine, selectNextOccurrence}
+
+interface SearchConfig {
+  /// Whether to position the search panel at the top of the editor
+  /// (the default is at the bottom).
+  top?: boolean
+}
+
+const searchConfigFacet = Facet.define<SearchConfig, Required<SearchConfig>>({
+  combine(configs) {
+    return {top: configs.some(c => c.top)}
+  }
+})
+
+/// Configure the behavior of the search extension.
+export function searchConfig(config: SearchConfig): Extension {
+  return searchConfigFacet.of(config)
+}
 
 type SearchResult = typeof SearchCursor.prototype.value
 
@@ -328,7 +346,8 @@ function createSearchPanel(view: EditorView) {
     mount() {
       ;(this.dom.querySelector("[name=search]") as HTMLInputElement).select()
     },
-    pos: 80
+    pos: 80,
+    top: view.state.facet(searchConfigFacet).top
   }
 }
 
