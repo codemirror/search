@@ -1,6 +1,6 @@
 import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
-import {StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
+import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec} from "@codemirror/state"
 import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
@@ -163,8 +163,8 @@ const setQuery = StateEffect.define<Query>()
 const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
-  create() {
-    return new SearchState(new StringQuery("", "", false), createSearchPanel)
+  create(state) {
+    return new SearchState(defaultQuery(state), createSearchPanel)
   },
   update(value, tr) {
     for (let effect of tr.effects) {
@@ -332,6 +332,12 @@ function createSearchPanel(view: EditorView) {
   }
 }
 
+function defaultQuery(state: EditorState, fallback?: Query) {
+  let sel = state.selection.main
+  let selText = sel.empty || sel.to > sel.from + 100 ? "" : state.sliceDoc(sel.from, sel.to)
+  return fallback && !selText ? fallback : new StringQuery(selText.replace(/\n/g, "\\n"), "", fallback?.caseInsensitive || false)
+}
+
 /// Make sure the search panel is open and focused.
 export const openSearchPanel: Command = view => {
   let state = view.state.field(searchState, false)
@@ -340,7 +346,10 @@ export const openSearchPanel: Command = view => {
     if (!panel) return false
     ;(panel.dom.querySelector("[name=search]") as HTMLInputElement).focus()
   } else {
-    view.dispatch({effects: [togglePanel.of(true), ...state ? [] : [StateEffect.appendConfig.of(searchExtensions)]]})
+    view.dispatch({effects: [
+      togglePanel.of(true),
+      state ? setQuery.of(defaultQuery(view.state, state.query)) : StateEffect.appendConfig.of(searchExtensions)
+    ]})
   }
   return true
 }
