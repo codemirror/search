@@ -397,7 +397,7 @@ export const searchKeymap: readonly KeyBinding[] = [
   {key: "Escape", run: closeSearchPanel, scope: "editor search-panel"},
   {key: "Mod-Shift-l", run: selectSelectionMatches},
   {key: "Alt-g", run: gotoLine},
-  {key: "Mod-d", run: selectNextOccurrence},
+  {key: "Mod-d", run: selectNextOccurrence, preventDefault: true},
 ]
 
 function buildPanel(conf: {
