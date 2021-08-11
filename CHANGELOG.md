@@ -1,3 +1,9 @@
+## 0.19.0 (2021-08-11)
+
+### Bug fixes
+
+Make sure to prevent the native Mod-d behavior so that the editor doesn't lose focus after selecting past the last occurrence.
+
 ## 0.18.4 (2021-05-27)
 
 ### New features
