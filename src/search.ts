@@ -18,11 +18,18 @@ interface SearchConfig {
   /// Whether to position the search panel at the top of the editor
   /// (the default is at the bottom).
   top?: boolean
+
+  /// Whether to select the content of the search panel when activated
+  /// (the default is false)
+  select?: boolean
 }
 
 const searchConfigFacet = Facet.define<SearchConfig, Required<SearchConfig>>({
   combine(configs) {
-    return {top: configs.some(c => c.top)}
+    return {
+      top: configs.some(c => c.top),
+      select: configs.some(c => c.select),
+    }
   }
 })
 
@@ -363,7 +370,11 @@ export const openSearchPanel: Command = view => {
   if (state && state.panel) {
     let panel = getPanel(view, createSearchPanel)
     if (!panel) return false
-    ;(panel.dom.querySelector("[name=search]") as HTMLInputElement).focus()
+    let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
+    searchInput.focus()
+    if (view.state.facet(searchConfigFacet).select === true) {
+      searchInput.select()
+    }
   } else {
     view.dispatch({effects: [
       togglePanel.of(true),
