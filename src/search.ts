@@ -18,11 +18,19 @@ interface SearchConfig {
   /// Whether to position the search panel at the top of the editor
   /// (the default is at the bottom).
   top?: boolean
+
+  /// Whether to match case by default when the search panel is activated
+  /// (the default is true)
+  matchCase?: boolean
 }
 
 const searchConfigFacet = Facet.define<SearchConfig, Required<SearchConfig>>({
   combine(configs) {
-    return {top: configs.some(c => c.top)}
+    let matchCase = configs.some(c => c.matchCase)
+    return {
+      top: configs.some(c => c.top),
+      matchCase: matchCase === undefined ? true : matchCase,
+    }
   }
 })
 
@@ -354,7 +362,8 @@ function createSearchPanel(view: EditorView) {
 function defaultQuery(state: EditorState, fallback?: Query) {
   let sel = state.selection.main
   let selText = sel.empty || sel.to > sel.from + 100 ? "" : state.sliceDoc(sel.from, sel.to)
-  return fallback && !selText ? fallback : new StringQuery(selText.replace(/\n/g, "\\n"), "", fallback?.caseInsensitive || false)
+  let caseInsensitive = fallback?.caseInsensitive || !state.facet(searchConfigFacet).matchCase
+  return fallback && !selText ? fallback : new StringQuery(selText.replace(/\n/g, "\\n"), "", caseInsensitive)
 }
 
 /// Make sure the search panel is open and focused.
