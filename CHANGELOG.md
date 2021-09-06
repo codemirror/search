@@ -1,3 +1,15 @@
+## 0.19.1 (2021-09-06)
+
+### Bug fixes
+
+Make `highlightSelectionMatches` not produce overlapping decorations, since those tend to just get unreadable.
+
+Make sure any existing search text is selected when opening the search panel. Add search config option to not match case when search panel is opened (#4)
+
+### New features
+
+The `searchConfig` function now takes a `matchCase` option that controls whether the search panel starts in case-sensitive mode.
+
 ## 0.19.0 (2021-08-11)
 
 ### Bug fixes
