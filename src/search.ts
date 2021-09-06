@@ -362,7 +362,7 @@ function createSearchPanel(view: EditorView) {
 function defaultQuery(state: EditorState, fallback?: Query) {
   let sel = state.selection.main
   let selText = sel.empty || sel.to > sel.from + 100 ? "" : state.sliceDoc(sel.from, sel.to)
-  let caseInsensitive = fallback?.caseInsensitive || !state.facet(searchConfigFacet).matchCase
+  let caseInsensitive = fallback?.caseInsensitive ?? !state.facet(searchConfigFacet).matchCase
   return fallback && !selText ? fallback : new StringQuery(selText.replace(/\n/g, "\\n"), "", caseInsensitive)
 }
 
