@@ -112,16 +112,24 @@ const selectWord: StateCommand = ({state, dispatch}) => {
 // Find next occurrence of query relative to last cursor. Wrap around
 // the document if there are no more matches.
 function findNextOccurrence(state: EditorState, query: string) {
-  let {ranges} = state.selection
-  let ahead = new SearchCursor(state.doc, query, ranges[ranges.length - 1].to).next()
-  if (!ahead.done) return ahead.value
-
-  let cursor = new SearchCursor(state.doc, query, 0, Math.max(0, ranges[ranges.length - 1].from - 1))
-  while (!cursor.next().done) {
-    if (!ranges.some(r => r.from === cursor.value.from))
+  let {main, ranges} = state.selection
+  let word = state.wordAt(main.head), fullWord = word && word.from == main.from && word.to == main.to
+  for (let cycled = false, cursor = new SearchCursor(state.doc, query, ranges[ranges.length - 1].to);;) {
+    cursor.next()
+    if (cursor.done) {
+      if (cycled) return null
+      cursor = new SearchCursor(state.doc, query, 0, Math.max(0, ranges[ranges.length - 1].from - 1))
+      cycled = true
+    } else {
+      if (cycled && ranges.some(r => r.from == cursor.value.from))
+        continue
+      if (fullWord) {
+        let word = state.wordAt(cursor.value.from)
+        if (!word || word.from != cursor.value.from || word.to != cursor.value.to) continue
+      }
       return cursor.value
+    }
   }
-  return null
 }
 
 /// Select next occurrence of the current selection.
@@ -138,7 +146,7 @@ export const selectNextOccurrence: StateCommand = ({state, dispatch}) => {
   if (!range) return false
 
   dispatch(state.update({
-    selection: state.selection.addRange(EditorSelection.range(range.from, range.to)),
+    selection: state.selection.addRange(EditorSelection.range(range.from, range.to), false),
     scrollIntoView: true
   }))
   return true
