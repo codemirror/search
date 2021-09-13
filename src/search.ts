@@ -306,6 +306,7 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
 /// Replace the current match of the search query.
 export const replaceNext = searchCommand((view, {query}) => {
   let {state} = view, {from, to} = state.selection.main
+  if (state.readOnly) return false
   let next = query.nextMatch(state.doc, from, from)
   if (!next) return false
   let changes = [], selection: {anchor: number, head: number} | undefined, replacement: Text | undefined
@@ -329,6 +330,7 @@ export const replaceNext = searchCommand((view, {query}) => {
 /// Replace all instances of the search query with the given
 /// replacement.
 export const replaceAll = searchCommand((view, {query}) => {
+  if (view.state.readOnly) return false
   let changes = query.matchAll(view.state.doc, 1e9)!.map(match => {
     let {from, to} = match
     return {from, to, insert: query.getReplacement(match)}
