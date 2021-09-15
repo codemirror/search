@@ -465,7 +465,7 @@ function buildPanel(conf: {
     }
   }
   function button(name: string, onclick: () => void, content: (Node | string)[]) {
-    return elt("button", {class: "cm-button", name, onclick}, content)
+    return elt("button", {class: "cm-button", name, onclick, type: "button"}, content)
   }
   let panel = elt("div", {onkeydown: keydown, class: "cm-search"}, [
     searchField,
@@ -478,7 +478,7 @@ function buildPanel(conf: {
     replaceField,
     button("replace", () => replaceNext(conf.view), [phrase("replace")]),
     button("replaceAll", () => replaceAll(conf.view), [phrase("replace all")]),
-    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close")}, ["×"])
+    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close"), type: "button"}, ["×"])
   ])
   return panel
 }
