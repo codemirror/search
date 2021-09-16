@@ -1,3 +1,11 @@
+## 0.19.2 (2021-09-16)
+
+### Bug fixes
+
+`selectNextOccurrence` will now only select partial words if the current main selection hold a partial word.
+
+Explicitly set the button's type to prevent the browser from submitting forms wrapped around the editor.
+
 ## 0.19.1 (2021-09-06)
 
 ### Bug fixes
