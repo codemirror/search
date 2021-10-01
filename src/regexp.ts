@@ -77,6 +77,8 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
       }
     }
   }
+
+  [Symbol.iterator]!: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
 }
 
 const flattened = new WeakMap<Text, FlattenedDoc>()
@@ -155,6 +157,13 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
       }
     }
   }
+
+  [Symbol.iterator]!: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
+}
+
+if (typeof Symbol != "undefined") {
+  RegExpCursor.prototype[Symbol.iterator] = MultilineRegExpCursor.prototype[Symbol.iterator] =
+    function(this: RegExpCursor) { return this }
 }
 
 export function validRegExp(source: string) {
