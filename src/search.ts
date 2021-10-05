@@ -258,7 +258,8 @@ export const findNext = searchCommand((view, {query}) => {
   view.dispatch({
     selection: {anchor: next.from, head: next.to},
     scrollIntoView: true,
-    effects: announceMatch(view, next)
+    effects: announceMatch(view, next),
+    userEvent: "select.search"
   })
   return true
 })
@@ -273,7 +274,8 @@ export const findPrevious = searchCommand((view, {query}) => {
   view.dispatch({
     selection: {anchor: range.from, head: range.to},
     scrollIntoView: true,
-    effects: announceMatch(view, range)
+    effects: announceMatch(view, range),
+    userEvent: "select.search"
   })
   return true
 })
@@ -283,7 +285,8 @@ export const selectMatches = searchCommand((view, {query}) => {
   let ranges = query.matchAll(view.state.doc, 1000)
   if (!ranges || !ranges.length) return false
   view.dispatch({
-    selection: EditorSelection.create(ranges.map(r => EditorSelection.range(r.from, r.to)))
+    selection: EditorSelection.create(ranges.map(r => EditorSelection.range(r.from, r.to))),
+    userEvent: "select.search.matches"
   })
   return true
 })
@@ -299,7 +302,10 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
     if (cur.value.from == from) main = ranges.length
     ranges.push(EditorSelection.range(cur.value.from, cur.value.to))
   }
-  dispatch(state.update({selection: EditorSelection.create(ranges, main)}))
+  dispatch(state.update({
+    selection: EditorSelection.create(ranges, main),
+    userEvent: "select.search.matches"
+  }))
   return true
 }
 
@@ -322,7 +328,8 @@ export const replaceNext = searchCommand((view, {query}) => {
   view.dispatch({
     changes, selection,
     scrollIntoView: !!selection,
-    effects: next ? announceMatch(view, next) : undefined
+    effects: next ? announceMatch(view, next) : undefined,
+    userEvent: "input.replace"
   })
   return true
 })
@@ -336,7 +343,10 @@ export const replaceAll = searchCommand((view, {query}) => {
     return {from, to, insert: query.getReplacement(match)}
   })
   if (!changes.length) return false
-  view.dispatch({changes})
+  view.dispatch({
+    changes,
+    userEvent: "input.replace.all"
+  })
   return true
 })
 
