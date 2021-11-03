@@ -553,6 +553,6 @@ const baseTheme = EditorView.baseTheme({
 
 const searchExtensions = [
   searchState,
-  Prec.fallback(searchHighlighter),
+  Prec.lowest(searchHighlighter),
   baseTheme
 ]
