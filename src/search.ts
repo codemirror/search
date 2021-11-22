@@ -415,8 +415,8 @@ export const closeSearchPanel: Command = view => {
 ///  - Mod-d: [`selectNextOccurrence`](#search.selectNextOccurrence)
 export const searchKeymap: readonly KeyBinding[] = [
   {key: "Mod-f", run: openSearchPanel, scope: "editor search-panel"},
-  {key: "F3", run: findNext, shift: findPrevious, scope: "editor search-panel"},
-  {key: "Mod-g", run: findNext, shift: findPrevious, scope: "editor search-panel"},
+  {key: "F3", run: findNext, shift: findPrevious, scope: "editor search-panel", preventDefault: true},
+  {key: "Mod-g", run: findNext, shift: findPrevious, scope: "editor search-panel", preventDefault: true},
   {key: "Escape", run: closeSearchPanel, scope: "editor search-panel"},
   {key: "Mod-Shift-l", run: selectSelectionMatches},
   {key: "Alt-g", run: gotoLine},
