@@ -1,3 +1,15 @@
+## 0.19.3 (2021-11-22)
+
+### Bug fixes
+
+Add `userEvent` annotations to search and replace transactions.
+
+Make sure the editor handles keys bound to `findNext`/`findPrevious` even when there are no matches, to avoid the browser's search interrupting users.
+
+### New features
+
+Add a `Symbol.iterator` property to the cursor types, so that they can be used with `for`/`of`.
+
 ## 0.19.2 (2021-09-16)
 
 ### Bug fixes
