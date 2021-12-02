@@ -1,3 +1,9 @@
+## 0.19.4 (2021-12-02)
+
+### Bug fixes
+
+The search panel will no longer show the replace interface when the editor is read-only.
+
 ## 0.19.3 (2021-11-22)
 
 ### Bug fixes
