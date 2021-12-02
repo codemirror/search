@@ -484,11 +484,13 @@ function buildPanel(conf: {
     button("select", () => selectMatches(conf.view), [phrase("all")]),
     elt("label", null, [caseField, phrase("match case")]),
     elt("label", null, [reField, phrase("regexp")]),
-    elt("br"),
-    replaceField,
-    button("replace", () => replaceNext(conf.view), [phrase("replace")]),
-    button("replaceAll", () => replaceAll(conf.view), [phrase("replace all")]),
-    elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close"), type: "button"}, ["×"])
+    ...conf.view.state.readOnly ? [] : [
+      elt("br"),
+      replaceField,
+      button("replace", () => replaceNext(conf.view), [phrase("replace")]),
+      button("replaceAll", () => replaceAll(conf.view), [phrase("replace all")]),
+      elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close"), type: "button"}, ["×"])
+    ]
   ])
   return panel
 }
