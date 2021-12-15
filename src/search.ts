@@ -412,9 +412,10 @@ class SearchPanel implements Panel {
   caseField: HTMLInputElement
   reField: HTMLInputElement
   dom: HTMLElement
+  query: Query
 
   constructor(readonly view: EditorView) {
-    let {query} = view.state.field(searchState)
+    let query = this.query = view.state.field(searchState).query
     this.commit = this.commit.bind(this)
 
     this.searchField = elt("input", {
@@ -476,7 +477,8 @@ class SearchPanel implements Panel {
   commit() {
     let query = new (this.reField.checked ? RegExpQuery : StringQuery)(
       this.searchField.value, this.replaceField.value, !this.caseField.checked)
-    if (!this.view.state.field(searchState).query.eq(query)) {
+    if (!query.eq(this.query)) {
+      this.query = query
       this.view.dispatch({effects: setQuery.of(query)})
     }
   }
@@ -491,6 +493,20 @@ class SearchPanel implements Panel {
       e.preventDefault()
       replaceNext(this.view)
     }
+  }
+
+  update(update: ViewUpdate) {
+    for (let tr of update.transactions) for (let effect of tr.effects) {
+      if (effect.is(setQuery) && !effect.value.eq(this.query)) this.setQuery(effect.value)
+    }
+  }
+
+  setQuery(query: Query) {
+    this.query = query
+    this.searchField.value = query.search
+    this.replaceField.value = query.replace
+    this.caseField.checked = !query.caseInsensitive
+    this.reField.checked = query instanceof RegExpQuery
   }
 
   mount() {
