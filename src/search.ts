@@ -2,7 +2,7 @@ import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding} from "@codemirror/view"
 import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec,
         Facet, Extension} from "@codemirror/state"
-import {PanelConstructor, showPanel, getPanel} from "@codemirror/panel"
+import {PanelConstructor, showPanel, Panel, getPanel} from "@codemirror/panel"
 import {Text} from "@codemirror/text"
 import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
@@ -351,24 +351,7 @@ export const replaceAll = searchCommand((view, {query}) => {
 })
 
 function createSearchPanel(view: EditorView) {
-  let {query} = view.state.field(searchState)
-  return {
-    dom: buildPanel({
-      view,
-      query,
-      updateQuery(q: Query) {
-        if (!query.eq(q)) {
-          query = q
-          view.dispatch({effects: setQuery.of(query)})
-        }
-      }
-    }),
-    mount() {
-      ;(this.dom.querySelector("[name=search]") as HTMLInputElement).select()
-    },
-    pos: 80,
-    top: view.state.facet(searchConfigFacet).top
-  }
+  return new SearchPanel(view)
 }
 
 function defaultQuery(state: EditorState, fallback?: Query) {
@@ -423,77 +406,103 @@ export const searchKeymap: readonly KeyBinding[] = [
   {key: "Mod-d", run: selectNextOccurrence, preventDefault: true},
 ]
 
-function buildPanel(conf: {
-  view: EditorView,
-  query: Query,
-  updateQuery: (query: Query) => void
-}) {
-  function phrase(phrase: string) { return conf.view.state.phrase(phrase) }
-  let searchField = elt("input", {
-    value: conf.query.search,
-    placeholder: phrase("Find"),
-    "aria-label": phrase("Find"),
-    class: "cm-textfield",
-    name: "search",
-    onchange: update,
-    onkeyup: update
-  }) as HTMLInputElement
-  let replaceField = elt("input", {
-    value: conf.query.replace,
-    placeholder: phrase("Replace"),
-    "aria-label": phrase("Replace"),
-    class: "cm-textfield",
-    name: "replace",
-    onchange: update,
-    onkeyup: update
-  }) as HTMLInputElement
-  let caseField = elt("input", {
-    type: "checkbox",
-    name: "case",
-    checked: !conf.query.caseInsensitive,
-    onchange: update
-  }) as HTMLInputElement
-  let reField = elt("input", {
-    type: "checkbox",
-    name: "re",
-    checked: conf.query instanceof RegExpQuery,
-    onchange: update
-  }) as HTMLInputElement
+class SearchPanel implements Panel {
+  searchField: HTMLInputElement
+  replaceField: HTMLInputElement
+  caseField: HTMLInputElement
+  reField: HTMLInputElement
+  dom: HTMLElement
 
-  function update() {
-    conf.updateQuery(new (reField.checked ? RegExpQuery : StringQuery)(searchField.value, replaceField.value, !caseField.checked))
+  constructor(readonly view: EditorView) {
+    let {query} = view.state.field(searchState)
+    this.commit = this.commit.bind(this)
+
+    this.searchField = elt("input", {
+      value: query.search,
+      placeholder: phrase(view, "Find"),
+      "aria-label": phrase(view, "Find"),
+      class: "cm-textfield",
+      name: "search",
+      onchange: this.commit,
+      onkeyup: this.commit
+    }) as HTMLInputElement
+    this.replaceField = elt("input", {
+      value: query.replace,
+      placeholder: phrase(view, "Replace"),
+      "aria-label": phrase(view, "Replace"),
+      class: "cm-textfield",
+      name: "replace",
+      onchange: this.commit,
+      onkeyup: this.commit
+    }) as HTMLInputElement
+    this.caseField = elt("input", {
+      type: "checkbox",
+      name: "case",
+      checked: !query.caseInsensitive,
+      onchange: this.commit
+    }) as HTMLInputElement
+    this.reField = elt("input", {
+      type: "checkbox",
+      name: "re",
+      checked: query instanceof RegExpQuery,
+      onchange: this.commit
+    }) as HTMLInputElement
+
+    function button(name: string, onclick: () => void, content: (Node | string)[]) {
+      return elt("button", {class: "cm-button", name, onclick, type: "button"}, content)
+    }
+    this.dom = elt("div", {onkeydown: (e: KeyboardEvent) => this.keydown(e), class: "cm-search"}, [
+      this.searchField,
+      button("next", () => findNext(view), [phrase(view, "next")]),
+      button("prev", () => findPrevious(view), [phrase(view, "previous")]),
+      button("select", () => selectMatches(view), [phrase(view, "all")]),
+      elt("label", null, [this.caseField, phrase(view, "match case")]),
+      elt("label", null, [this.reField, phrase(view, "regexp")]),
+      ...view.state.readOnly ? [] : [
+        elt("br"),
+        this.replaceField,
+        button("replace", () => replaceNext(view), [phrase(view, "replace")]),
+        button("replaceAll", () => replaceAll(view), [phrase(view, "replace all")]),
+        elt("button", {
+          name: "close",
+          onclick: () => closeSearchPanel(view),
+          "aria-label": phrase(view, "close"),
+          type: "button"
+        }, ["×"])
+      ]
+    ])
   }
-  function keydown(e: KeyboardEvent) {
-    if (runScopeHandlers(conf.view, e, "search-panel")) {
-      e.preventDefault()
-    } else if (e.keyCode == 13 && e.target == searchField) {
-      e.preventDefault()
-      ;(e.shiftKey ? findPrevious : findNext)(conf.view)
-    } else if (e.keyCode == 13 && e.target == replaceField) {
-      e.preventDefault()
-      replaceNext(conf.view)
+
+  commit() {
+    let query = new (this.reField.checked ? RegExpQuery : StringQuery)(
+      this.searchField.value, this.replaceField.value, !this.caseField.checked)
+    if (!this.view.state.field(searchState).query.eq(query)) {
+      this.view.dispatch({effects: setQuery.of(query)})
     }
   }
-  function button(name: string, onclick: () => void, content: (Node | string)[]) {
-    return elt("button", {class: "cm-button", name, onclick, type: "button"}, content)
+
+  keydown(e: KeyboardEvent) {
+    if (runScopeHandlers(this.view, e, "search-panel")) {
+      e.preventDefault()
+    } else if (e.keyCode == 13 && e.target == this.searchField) {
+      e.preventDefault()
+      ;(e.shiftKey ? findPrevious : findNext)(this.view)
+    } else if (e.keyCode == 13 && e.target == this.replaceField) {
+      e.preventDefault()
+      replaceNext(this.view)
+    }
   }
-  let panel = elt("div", {onkeydown: keydown, class: "cm-search"}, [
-    searchField,
-    button("next", () => findNext(conf.view), [phrase("next")]),
-    button("prev", () => findPrevious(conf.view), [phrase("previous")]),
-    button("select", () => selectMatches(conf.view), [phrase("all")]),
-    elt("label", null, [caseField, phrase("match case")]),
-    elt("label", null, [reField, phrase("regexp")]),
-    ...conf.view.state.readOnly ? [] : [
-      elt("br"),
-      replaceField,
-      button("replace", () => replaceNext(conf.view), [phrase("replace")]),
-      button("replaceAll", () => replaceAll(conf.view), [phrase("replace all")]),
-      elt("button", {name: "close", onclick: () => closeSearchPanel(conf.view), "aria-label": phrase("close"), type: "button"}, ["×"])
-    ]
-  ])
-  return panel
+
+  mount() {
+    this.searchField.select()
+  }
+
+  get pos() { return 80 }
+
+  get top() { return this.view.state.facet(searchConfigFacet).top }
 }
+
+function phrase(view: EditorView, phrase: string) { return view.state.phrase(phrase) }
 
 const AnnounceMargin = 30
 
