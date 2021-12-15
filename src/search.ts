@@ -19,17 +19,16 @@ interface SearchConfig {
   /// (the default is at the bottom).
   top?: boolean
 
-  /// Whether to match case by default when the search panel is activated
-  /// (the default is true)
-  matchCase?: boolean
+  /// Whether to enable case sensitivity by default when the search
+  /// panel is activated (defaults to false).
+  caseSensitive?: boolean
 }
 
 const searchConfigFacet = Facet.define<SearchConfig, Required<SearchConfig>>({
   combine(configs) {
-    let matchCase = configs.some(c => c.matchCase)
     return {
       top: configs.some(c => c.top),
-      matchCase: matchCase === undefined ? true : matchCase,
+      caseSensitive: configs.some(c => c.caseSensitive || (c as any).matchCase) // FIXME remove fallback on next major
     }
   }
 })
@@ -39,19 +38,56 @@ export function searchConfig(config: SearchConfig): Extension {
   return searchConfigFacet.of(config)
 }
 
-type SearchResult = typeof SearchCursor.prototype.value
+/// A search query. Part of the editor's search state.
+class SearchQuery {
+  /// The search string (or regular expression).
+  readonly search: string
+  /// Indicates whether the search is case-sensitive.
+  readonly caseSensitive: boolean
+  /// Then true, the search string is interpreted as a regular
+  /// expression.
+  readonly regexp: boolean
+  /// The replace text, or the empty string if no replace text has
+  /// been given.
+  readonly replace: string
+  /// Whether this query is non-empty and, in case of a regular
+  /// expression search, syntactically valid.
+  readonly valid: boolean
 
-abstract class Query<Result extends SearchResult = SearchResult> {
-  constructor(readonly search: string,
-              readonly replace: string,
-              readonly caseInsensitive: boolean) {}
-
-  eq(other: Query) {
-    return this.search == other.search && this.replace == other.replace &&
-      this.caseInsensitive == other.caseInsensitive && this.constructor == other.constructor
+  /// Create a query object.
+  constructor(config: {
+    /// The search string.
+    search: string,
+    /// Controls whether the search should be case-sensitive.
+    caseSensitive?: boolean,
+    /// When true, interpret the search string as a regular expression.
+    regexp?: boolean,
+    /// The replace text.
+    replace?: string,
+  }) {
+    this.search = config.search
+    this.caseSensitive = !!config.caseSensitive
+    this.regexp = !!config.regexp
+    this.replace = config.replace || ""
+    this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
   }
 
-  abstract valid: boolean
+  /// Compare this query to another query.
+  eq(other: SearchQuery) {
+    return this.search == other.search && this.replace == other.replace &&
+      this.caseSensitive == other.caseSensitive && this.regexp == other.regexp
+  }
+
+  /// @internal
+  create(): QueryType {
+    return this.regexp ? new RegExpQuery(this) : new StringQuery(this)
+  }
+}
+
+type SearchResult = typeof SearchCursor.prototype.value
+
+abstract class QueryType<Result extends SearchResult = SearchResult> {
+  constructor(readonly spec: SearchQuery) {}
 
   abstract nextMatch(doc: Text, curFrom: number, curTo: number): Result | null
 
@@ -66,17 +102,17 @@ abstract class Query<Result extends SearchResult = SearchResult> {
 
 const enum FindPrev { ChunkSize = 10000 }
 
-class StringQuery extends Query<SearchResult> {
+class StringQuery extends QueryType<SearchResult> {
   unquoted: string
 
-  constructor(search: string, replace: string, caseInsensitive: boolean) {
-    super(search, replace, caseInsensitive)
-    this.unquoted = search.replace(/\\([nrt\\])/g,
-                                   (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
+  constructor(spec: SearchQuery) {
+    super(spec)
+    this.unquoted = spec.search.replace(/\\([nrt\\])/g,
+                                        (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
   private cursor(doc: Text, from = 0, to = doc.length) {
-    return new SearchCursor(doc, this.unquoted, from, to, this.caseInsensitive ? x => x.toLowerCase() : undefined)
+    return new SearchCursor(doc, this.unquoted, from, to, this.spec.caseSensitive ? undefined : x => x.toLowerCase())
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
@@ -103,7 +139,7 @@ class StringQuery extends Query<SearchResult> {
       this.prevMatchInRange(doc, curTo, doc.length)
   }
 
-  getReplacement(_result: SearchResult) { return this.replace }
+  getReplacement(_result: SearchResult) { return this.spec.replace }
 
   matchAll(doc: Text, limit: number) {
     let cursor = this.cursor(doc), ranges = []
@@ -119,24 +155,15 @@ class StringQuery extends Query<SearchResult> {
                              Math.min(to + this.unquoted.length, doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
-
-  get valid() { return !!this.search }
 }
 
 const enum RegExp { HighlightMargin = 250 }
 
 type RegExpResult = typeof RegExpCursor.prototype.value
 
-class RegExpQuery extends Query<RegExpResult> {
-  valid: boolean
-
-  constructor(search: string, replace: string, caseInsensitive: boolean) {
-    super(search, replace, caseInsensitive)
-    this.valid = !!search && validRegExp(search)
-  }
-
+class RegExpQuery extends QueryType<RegExpResult> {
   private cursor(doc: Text, from: number = 0, to: number = doc.length) {
-    return new RegExpCursor(doc, this.search, this.caseInsensitive ? {ignoreCase: true} : undefined, from, to)
+    return new RegExpCursor(doc, this.spec.search, this.spec.caseSensitive ? undefined : {ignoreCase: true}, from, to)
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
@@ -161,7 +188,7 @@ class RegExpQuery extends Query<RegExpResult> {
   }
 
   getReplacement(result: RegExpResult) {
-    return this.replace.replace(/\$([$&\d+])/g, (m, i) =>
+    return this.spec.replace.replace(/\$([$&\d+])/g, (m, i) =>
       i == "$" ? "$"
       : i == "&" ? result.match[0]
       : i != "0" && +i < result.match.length ? result.match[i]
@@ -184,17 +211,17 @@ class RegExpQuery extends Query<RegExpResult> {
   }
 }
 
-const setQuery = StateEffect.define<Query>()
+const setQuery = StateEffect.define<SearchQuery>()
 
 const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
   create(state) {
-    return new SearchState(defaultQuery(state), createSearchPanel)
+    return new SearchState(defaultQuery(state).create(), createSearchPanel)
   },
   update(value, tr) {
     for (let effect of tr.effects) {
-      if (effect.is(setQuery)) value = new SearchState(effect.value, value.panel)
+      if (effect.is(setQuery)) value = new SearchState(effect.value.create(), value.panel)
       else if (effect.is(togglePanel)) value = new SearchState(value.query, effect.value ? createSearchPanel : null)
     }
     return value
@@ -203,7 +230,7 @@ const searchState: StateField<SearchState> = StateField.define<SearchState>({
 })
 
 class SearchState {
-  constructor(readonly query: Query, readonly panel: PanelConstructor | null) {}
+  constructor(readonly query: QueryType, readonly panel: PanelConstructor | null) {}
 }
 
 const matchMark = Decoration.mark({class: "cm-searchMatch"}),
@@ -223,7 +250,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
   }
 
   highlight({query, panel}: SearchState) {
-    if (!panel || !query.valid) return Decoration.none
+    if (!panel || !query.spec.valid) return Decoration.none
     let {view} = this
     let builder = new RangeSetBuilder<Decoration>()
     for (let i = 0, ranges = view.visibleRanges, l = ranges.length; i < l; i++) {
@@ -243,7 +270,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
 function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Command {
   return view => {
     let state = view.state.field(searchState, false)
-    return state && state.query.valid ? f(view, state) : openSearchPanel(view)
+    return state && state.query.spec.valid ? f(view, state) : openSearchPanel(view)
   }
 }
 
@@ -354,11 +381,11 @@ function createSearchPanel(view: EditorView) {
   return new SearchPanel(view)
 }
 
-function defaultQuery(state: EditorState, fallback?: Query) {
+function defaultQuery(state: EditorState, fallback?: SearchQuery) {
   let sel = state.selection.main
   let selText = sel.empty || sel.to > sel.from + 100 ? "" : state.sliceDoc(sel.from, sel.to)
-  let caseInsensitive = fallback?.caseInsensitive ?? !state.facet(searchConfigFacet).matchCase
-  return fallback && !selText ? fallback : new StringQuery(selText.replace(/\n/g, "\\n"), "", caseInsensitive)
+  let caseSensitive = fallback?.caseSensitive ?? state.facet(searchConfigFacet).caseSensitive
+  return fallback && !selText ? fallback : new SearchQuery({search: selText.replace(/\n/g, "\\n"), caseSensitive})
 }
 
 /// Make sure the search panel is open and focused.
@@ -369,7 +396,7 @@ export const openSearchPanel: Command = view => {
     if (!panel) return false
     let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
     if (searchInput != view.root.activeElement) {
-      let query = defaultQuery(view.state, state.query)
+      let query = defaultQuery(view.state, state.query.spec)
       if (query.valid) view.dispatch({effects: setQuery.of(query)})
       searchInput.focus()
       searchInput.select()
@@ -377,7 +404,7 @@ export const openSearchPanel: Command = view => {
   } else {
     view.dispatch({effects: [
       togglePanel.of(true),
-      state ? setQuery.of(defaultQuery(view.state, state.query)) : StateEffect.appendConfig.of(searchExtensions)
+      state ? setQuery.of(defaultQuery(view.state, state.query.spec)) : StateEffect.appendConfig.of(searchExtensions)
     ]})
   }
   return true
@@ -416,10 +443,10 @@ class SearchPanel implements Panel {
   caseField: HTMLInputElement
   reField: HTMLInputElement
   dom: HTMLElement
-  query: Query
+  query: SearchQuery
 
   constructor(readonly view: EditorView) {
-    let query = this.query = view.state.field(searchState).query
+    let query = this.query = view.state.field(searchState).query.spec
     this.commit = this.commit.bind(this)
 
     this.searchField = elt("input", {
@@ -443,13 +470,13 @@ class SearchPanel implements Panel {
     this.caseField = elt("input", {
       type: "checkbox",
       name: "case",
-      checked: !query.caseInsensitive,
+      checked: query.caseSensitive,
       onchange: this.commit
     }) as HTMLInputElement
     this.reField = elt("input", {
       type: "checkbox",
       name: "re",
-      checked: query instanceof RegExpQuery,
+      checked: query.regexp,
       onchange: this.commit
     }) as HTMLInputElement
 
@@ -479,8 +506,12 @@ class SearchPanel implements Panel {
   }
 
   commit() {
-    let query = new (this.reField.checked ? RegExpQuery : StringQuery)(
-      this.searchField.value, this.replaceField.value, !this.caseField.checked)
+    let query = new SearchQuery({
+      search: this.searchField.value,
+      caseSensitive: this.caseField.checked,
+      regexp: this.reField.checked,
+      replace: this.replaceField.value
+    })
     if (!query.eq(this.query)) {
       this.query = query
       this.view.dispatch({effects: setQuery.of(query)})
@@ -505,12 +536,12 @@ class SearchPanel implements Panel {
     }
   }
 
-  setQuery(query: Query) {
+  setQuery(query: SearchQuery) {
     this.query = query
     this.searchField.value = query.search
     this.replaceField.value = query.replace
-    this.caseField.checked = !query.caseInsensitive
-    this.reField.checked = query instanceof RegExpQuery
+    this.caseField.checked = query.caseSensitive
+    this.reField.checked = query.regexp
   }
 
   mount() {
