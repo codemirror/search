@@ -22,13 +22,28 @@ interface SearchConfig {
   /// Whether to enable case sensitivity by default when the search
   /// panel is activated (defaults to false).
   caseSensitive?: boolean
+
+  /// Can be used to override the way the search panel is implemented.
+  /// Should create a [Panel](#panel.Panel) that contains a form
+  /// which lets the user:
+  ///
+  /// - See the [current](#search.getSearchQuery) search query.
+  /// - Manipulate the [query](#search.SearchQuery) and
+  ///   [update](#search.setSearchQuery) the search state with a new
+  ///   query.
+  /// - Notice external changes to the query by reacting to the
+  ///   appropriate [state effect](#search.setSearchQuery).
+  /// - Run some of the search commands.
+  createPanel?: (view: EditorView) => Panel
 }
 
-const searchConfigFacet = Facet.define<SearchConfig, Required<SearchConfig>>({
+const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.define({
   combine(configs) {
     return {
-      top: configs.some(c => c.top),
-      caseSensitive: configs.some(c => c.caseSensitive || (c as any).matchCase) // FIXME remove fallback on next major
+      top: configs.reduce((val, conf) => val ?? conf.top, undefined as boolean | undefined) || false,
+      caseSensitive: configs.reduce((val, conf) => val ?? (conf.caseSensitive || (conf as any).matchCase),
+                                    undefined as boolean | undefined) || false, // FIXME remove fallback on next major,
+      createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view))
     }
   }
 })
@@ -39,7 +54,7 @@ export function searchConfig(config: SearchConfig): Extension {
 }
 
 /// A search query. Part of the editor's search state.
-class SearchQuery {
+export class SearchQuery {
   /// The search string (or regular expression).
   readonly search: string
   /// Indicates whether the search is case-sensitive.
@@ -211,7 +226,8 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 }
 
-const setQuery = StateEffect.define<SearchQuery>()
+/// A state effect that updates the current search query.
+export const setSearchQuery = StateEffect.define<SearchQuery>()
 
 const togglePanel = StateEffect.define<boolean>()
 
@@ -221,13 +237,19 @@ const searchState: StateField<SearchState> = StateField.define<SearchState>({
   },
   update(value, tr) {
     for (let effect of tr.effects) {
-      if (effect.is(setQuery)) value = new SearchState(effect.value.create(), value.panel)
+      if (effect.is(setSearchQuery)) value = new SearchState(effect.value.create(), value.panel)
       else if (effect.is(togglePanel)) value = new SearchState(value.query, effect.value ? createSearchPanel : null)
     }
     return value
   },
   provide: f => showPanel.from(f, val => val.panel)
 })
+
+/// Get the current search query from an editor state.
+export function getSearchQuery(state: EditorState) {
+  let curState = state.field(searchState, false)
+  return curState ? curState.query.spec : defaultQuery(state)
+}
 
 class SearchState {
   constructor(readonly query: QueryType, readonly panel: PanelConstructor | null) {}
@@ -378,7 +400,7 @@ export const replaceAll = searchCommand((view, {query}) => {
 })
 
 function createSearchPanel(view: EditorView) {
-  return new SearchPanel(view)
+  return view.state.facet(searchConfigFacet).createPanel(view)
 }
 
 function defaultQuery(state: EditorState, fallback?: SearchQuery) {
@@ -397,14 +419,14 @@ export const openSearchPanel: Command = view => {
     let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
     if (searchInput != view.root.activeElement) {
       let query = defaultQuery(view.state, state.query.spec)
-      if (query.valid) view.dispatch({effects: setQuery.of(query)})
+      if (query.valid) view.dispatch({effects: setSearchQuery.of(query)})
       searchInput.focus()
       searchInput.select()
     }
   } else {
     view.dispatch({effects: [
       togglePanel.of(true),
-      state ? setQuery.of(defaultQuery(view.state, state.query.spec)) : StateEffect.appendConfig.of(searchExtensions)
+      state ? setSearchQuery.of(defaultQuery(view.state, state.query.spec)) : StateEffect.appendConfig.of(searchExtensions)
     ]})
   }
   return true
@@ -514,7 +536,7 @@ class SearchPanel implements Panel {
     })
     if (!query.eq(this.query)) {
       this.query = query
-      this.view.dispatch({effects: setQuery.of(query)})
+      this.view.dispatch({effects: setSearchQuery.of(query)})
     }
   }
 
@@ -532,7 +554,7 @@ class SearchPanel implements Panel {
 
   update(update: ViewUpdate) {
     for (let tr of update.transactions) for (let effect of tr.effects) {
-      if (effect.is(setQuery) && !effect.value.eq(this.query)) this.setQuery(effect.value)
+      if (effect.is(setSearchQuery) && !effect.value.eq(this.query)) this.setQuery(effect.value)
     }
   }
 

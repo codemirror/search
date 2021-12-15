@@ -14,6 +14,12 @@
 @closeSearchPanel
 @gotoLine
 
+### Search Query
+
+@SearchQuery
+@getSearchQuery
+@setSearchQuery
+
 ### Cursor
 
 @SearchCursor
