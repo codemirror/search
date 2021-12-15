@@ -368,8 +368,12 @@ export const openSearchPanel: Command = view => {
     let panel = getPanel(view, createSearchPanel)
     if (!panel) return false
     let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
-    searchInput.focus()
-    searchInput.select()
+    if (searchInput != view.root.activeElement) {
+      let query = defaultQuery(view.state, state.query)
+      if (query.valid) view.dispatch({effects: setQuery.of(query)})
+      searchInput.focus()
+      searchInput.select()
+    }
   } else {
     view.dispatch({effects: [
       togglePanel.of(true),
