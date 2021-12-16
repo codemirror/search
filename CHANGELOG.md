@@ -1,3 +1,19 @@
+## 0.19.5 (2021-12-16)
+
+### Breaking changes
+
+The search option `matchCase` was renamed to `caseSensitive` (the old name will continue to work until the next breaking release).
+
+### Bug fixes
+
+`openSearchPanel` will now update the search query to the current selection even if the panel was already open.
+
+### New features
+
+Client code can now pass a custom search panel creation function in the search configuration.
+
+The `getSearchQuery` function and `setSearchQuery` effect can now be used to inspect or change the current search query.
+
 ## 0.19.4 (2021-12-02)
 
 ### Bug fixes
