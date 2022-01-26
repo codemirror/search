@@ -147,7 +147,7 @@ export const selectNextOccurrence: StateCommand = ({state, dispatch}) => {
 
   dispatch(state.update({
     selection: state.selection.addRange(EditorSelection.range(range.from, range.to), false),
-    scrollIntoView: true
+    effects: EditorView.scrollIntoView(range.to)
   }))
   return true
 }
