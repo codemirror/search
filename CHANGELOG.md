@@ -1,3 +1,9 @@
+## 0.19.6 (2022-01-27)
+
+### Bug fixes
+
+Make `selectNextOccurrence` scroll the newly selected range into view.
+
 ## 0.19.5 (2021-12-16)
 
 ### Breaking changes
