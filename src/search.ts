@@ -48,10 +48,16 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
   }
 })
 
-/// Configure the behavior of the search extension.
-export function searchConfig(config: SearchConfig): Extension {
-  return searchConfigFacet.of(config)
+/// Add search state to the editor configuration, and optionally
+/// configure the search extension.
+/// ([`openSearchPanel`](#search.openSearchPanel) when automatically
+/// enable this if it isn't already on.)
+export function search(config?: SearchConfig): Extension {
+  return config ? [searchConfigFacet.of(config), searchExtensions] : searchExtensions
 }
+
+/// @internal
+export const searchConfig = search // FIXME drop on next release
 
 /// A search query. Part of the editor's search state.
 export class SearchQuery {
@@ -226,7 +232,11 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 }
 
-/// A state effect that updates the current search query.
+/// A state effect that updates the current search query. Note that
+/// this only has an effect if the search state has been initialized
+/// (by including [`search`](#search.search) in your configuration or
+/// by running [`openSearchPanel`](#search.openSearchPanel) at least
+/// once).
 export const setSearchQuery = StateEffect.define<SearchQuery>()
 
 const togglePanel = StateEffect.define<boolean>()
