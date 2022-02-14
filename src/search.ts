@@ -243,7 +243,7 @@ const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
   create(state) {
-    return new SearchState(defaultQuery(state).create(), createSearchPanel)
+    return new SearchState(defaultQuery(state).create(), null)
   },
   update(value, tr) {
     for (let effect of tr.effects) {
