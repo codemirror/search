@@ -1,3 +1,13 @@
+## 0.19.7 (2022-02-14)
+
+### Breaking changes
+
+`searchConfig` is deprecated in favor of `search` (but will exist until next major release).
+
+### New features
+
+The new `search` function is now used to enable and configure the search extension.
+
 ## 0.19.6 (2022-01-27)
 
 ### Bug fixes

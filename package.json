@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/search",
-  "version": "0.19.6",
+  "version": "0.19.7",
   "description": "Search functionality for the CodeMirror code editor",
   "scripts": {
     "test": "cm-runtests",
