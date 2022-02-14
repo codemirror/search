@@ -1,3 +1,9 @@
+## 0.19.8 (2022-02-14)
+
+### Bug fixes
+
+Fix a bug that caused the search panel to start open when configuring a state with the `search()` extension.
+
 ## 0.19.7 (2022-02-14)
 
 ### Breaking changes
