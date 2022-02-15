@@ -1,5 +1,5 @@
 @searchKeymap
-@searchConfig
+@search
 
 ### Commands
 
