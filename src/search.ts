@@ -323,6 +323,23 @@ export const findNext = searchCommand((view, {query}) => {
   return true
 })
 
+/// Open the search panel if it isn't already open, and move the
+/// selection to the first match at or after the current main selection.
+/// Will wrap around to the start of the document when it reaches the
+/// end.
+const findNextInclusive = searchCommand((view, {query}) => {
+  let {from} = view.state.selection.main
+  let next = query.nextMatch(view.state.doc, from, from)
+  if (!next) return false
+  view.dispatch({
+    selection: {anchor: next.from, head: next.to},
+    scrollIntoView: true,
+    effects: announceMatch(view, next),
+    userEvent: "select.search"
+  })
+  return true
+})
+
 /// Move the selection to the previous instance of the search query,
 /// before the current main selection. Will wrap past the start
 /// of the document to start searching at the end again.
@@ -545,8 +562,14 @@ class SearchPanel implements Panel {
       replace: this.replaceField.value
     })
     if (!query.eq(this.query)) {
+      let prevQuery = this.query
       this.query = query
       this.view.dispatch({effects: setSearchQuery.of(query)})
+      if (prevQuery.valid && (!query.valid || !findNextInclusive(this.view))) {
+        this.view.dispatch({
+          selection: {anchor: this.view.state.selection.main.from}
+        })
+      }
     }
   }
 
