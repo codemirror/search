@@ -13,12 +13,15 @@ type HighlightOptions = {
   /// The amount of matches (in the viewport) at which to disable
   /// highlighting. Defaults to 100.
   maxMatches?: number
+  /// Whether to only highlight whole words.
+  wholeWords?: boolean
 }
 
 const defaultHighlightOptions = {
   highlightWordAroundCursor: false,
   minSelectionLength: 1,
-  maxMatches: 100
+  maxMatches: 100,
+  wholeWords: true
 }
 
 const highlightConfig = Facet.define<HighlightOptions, Required<HighlightOptions>>({
@@ -44,6 +47,18 @@ export function highlightSelectionMatches(options?: HighlightOptions): Extension
 const matchDeco = Decoration.mark({class: "cm-selectionMatch"})
 const mainMatchDeco = Decoration.mark({class: "cm-selectionMatch cm-selectionMatch-main"})
 
+// Whether the characters directly outside the given positions are non-word characters
+function insideWordBoundaries (check: (char: string) => CharCategory, state: EditorState, from: number, to: number): boolean {
+  return (from == 0 || check(state.sliceDoc(from - 1, from)) != CharCategory.Word) &&
+      (to == state.doc.length || check(state.sliceDoc(to, to + 1)) != CharCategory.Word)
+}
+
+// Whether the characters directly at the given positions are word characters
+function insideWord (check: (char: string) => CharCategory, state: EditorState, from: number, to: number): boolean {
+  return check(state.sliceDoc(from, from + 1)) == CharCategory.Word
+      && check(state.sliceDoc(to - 1, to)) == CharCategory.Word
+}
+
 const matchHighlighter = ViewPlugin.fromClass(class {
   decorations: DecorationSet
 
@@ -59,27 +74,35 @@ const matchHighlighter = ViewPlugin.fromClass(class {
     let conf = view.state.facet(highlightConfig)
     let {state} = view, sel = state.selection
     if (sel.ranges.length > 1) return Decoration.none
-    let range = sel.main, query, check = null
+    let range = sel.main, query, check = null, empty = false
     if (range.empty) {
       if (!conf.highlightWordAroundCursor) return Decoration.none
       let word = state.wordAt(range.head)
       if (!word) return Decoration.none
+      empty = true
       check = state.charCategorizer(range.head)
       query = state.sliceDoc(word.from, word.to)
     } else {
       let len = range.to - range.from
       if (len < conf.minSelectionLength || len > 200) return Decoration.none
-      query = state.sliceDoc(range.from, range.to).trim()
-      if (!query) return Decoration.none
+      if (conf.wholeWords) {
+        query = state.sliceDoc(range.from, range.to)
+        if (!query) return Decoration.none
+        check = state.charCategorizer(range.head)
+        if (!(insideWordBoundaries(check, state, range.from, range.to)
+            && insideWord(check, state, range.from, range.to))) return Decoration.none
+      } else {
+        query = state.sliceDoc(range.from, range.to).trim()
+        if (!query) return Decoration.none
+      }
     }
     let deco = []
     for (let part of view.visibleRanges) {
       let cursor = new SearchCursor(state.doc, query, part.from, part.to)
       while (!cursor.next().done) {
         let {from, to} = cursor.value
-        if (!check || ((from == 0 || check(state.sliceDoc(from - 1, from)) != CharCategory.Word) &&
-                       (to == state.doc.length || check(state.sliceDoc(to, to + 1)) != CharCategory.Word))) {
-          if (check && from <= range.from && to >= range.to)
+        if (!check || insideWordBoundaries(check, state, from, to)) {
+          if (empty && from <= range.from && to >= range.to)
             deco.push(mainMatchDeco.range(from, to))
           else if (from >= range.to || to <= range.from)
             deco.push(matchDeco.range(from, to))
