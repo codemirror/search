@@ -86,7 +86,7 @@ const matchHighlighter = ViewPlugin.fromClass(class {
       let len = range.to - range.from
       if (len < conf.minSelectionLength || len > 200) return Decoration.none
       if (conf.wholeWords) {
-        query = state.sliceDoc(range.from, range.to)
+        query = state.sliceDoc(range.from, range.to) // TODO: allow and include leading/trailing space?
         if (!query) return Decoration.none
         check = state.charCategorizer(range.head)
         if (!(insideWordBoundaries(check, state, range.from, range.to)
