@@ -306,6 +306,25 @@ function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Co
   }
 }
 
+const findNextInclusive = (view: EditorView) => {
+  let state = view.state.field(searchState, false)
+  if (!state || !state.query.spec.valid) return false
+  let {from} = view.state.selection.main
+  let next = state.query.nextMatch(view.state.doc, from, from)
+  if (!next) return false
+  selectMatch(view, next)
+  return true
+}
+
+const selectMatch = (view: EditorView, next: SearchResult) => {
+  view.dispatch({
+    selection: {anchor: next.from, head: next.to},
+    scrollIntoView: true,
+    effects: announceMatch(view, next),
+    userEvent: "select.search"
+  })
+}
+
 /// Open the search panel if it isn't already open, and move the
 /// selection to the first match after the current main selection.
 /// Will wrap around to the start of the document when it reaches the
@@ -314,29 +333,7 @@ export const findNext = searchCommand((view, {query}) => {
   let {from, to} = view.state.selection.main
   let next = query.nextMatch(view.state.doc, from, to)
   if (!next || next.from == from && next.to == to) return false
-  view.dispatch({
-    selection: {anchor: next.from, head: next.to},
-    scrollIntoView: true,
-    effects: announceMatch(view, next),
-    userEvent: "select.search"
-  })
-  return true
-})
-
-/// Open the search panel if it isn't already open, and move the
-/// selection to the first match at or after the current main selection.
-/// Will wrap around to the start of the document when it reaches the
-/// end.
-const findNextInclusive = searchCommand((view, {query}) => {
-  let {from} = view.state.selection.main
-  let next = query.nextMatch(view.state.doc, from, from)
-  if (!next) return false
-  view.dispatch({
-    selection: {anchor: next.from, head: next.to},
-    scrollIntoView: true,
-    effects: announceMatch(view, next),
-    userEvent: "select.search"
-  })
+  selectMatch(view, next)
   return true
 })
 
@@ -565,7 +562,8 @@ class SearchPanel implements Panel {
       let prevQuery = this.query
       this.query = query
       this.view.dispatch({effects: setSearchQuery.of(query)})
-      if (prevQuery.valid && (!query.valid || !findNextInclusive(this.view))) {
+      let selected = findNextInclusive(this.view)
+      if (prevQuery.valid && (!query.valid || !selected)) {
         this.view.dispatch({
           selection: {anchor: this.view.state.selection.main.from}
         })
