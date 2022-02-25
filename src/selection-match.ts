@@ -74,12 +74,11 @@ const matchHighlighter = ViewPlugin.fromClass(class {
     let conf = view.state.facet(highlightConfig)
     let {state} = view, sel = state.selection
     if (sel.ranges.length > 1) return Decoration.none
-    let range = sel.main, query, check = null, empty = false
+    let range = sel.main, query, check = null
     if (range.empty) {
       if (!conf.highlightWordAroundCursor) return Decoration.none
       let word = state.wordAt(range.head)
       if (!word) return Decoration.none
-      empty = true
       check = state.charCategorizer(range.head)
       query = state.sliceDoc(word.from, word.to)
     } else {
@@ -102,7 +101,7 @@ const matchHighlighter = ViewPlugin.fromClass(class {
       while (!cursor.next().done) {
         let {from, to} = cursor.value
         if (!check || insideWordBoundaries(check, state, from, to)) {
-          if (empty && from <= range.from && to >= range.to)
+          if (range.empty && from <= range.from && to >= range.to)
             deco.push(mainMatchDeco.range(from, to))
           else if (from >= range.to || to <= range.from)
             deco.push(matchDeco.range(from, to))
