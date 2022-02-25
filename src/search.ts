@@ -35,6 +35,9 @@ interface SearchConfig {
   ///   appropriate [state effect](#search.setSearchQuery).
   /// - Run some of the search commands.
   createPanel?: (view: EditorView) => Panel
+
+  // Whether to select the first match when the search query changes.
+  selectMatch?: boolean
 }
 
 const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.define({
@@ -43,7 +46,8 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
       top: configs.reduce((val, conf) => val ?? conf.top, undefined as boolean | undefined) || false,
       caseSensitive: configs.reduce((val, conf) => val ?? (conf.caseSensitive || (conf as any).matchCase),
                                     undefined as boolean | undefined) || false, // FIXME remove fallback on next major,
-      createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view))
+      createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view)),
+      selectMatch: configs.some(c => c.selectMatch)
     }
   }
 })
@@ -562,11 +566,14 @@ class SearchPanel implements Panel {
       let prevQuery = this.query
       this.query = query
       this.view.dispatch({effects: setSearchQuery.of(query)})
-      let selected = findNextInclusive(this.view)
-      if (prevQuery.valid && (!query.valid || !selected)) {
-        this.view.dispatch({
-          selection: {anchor: this.view.state.selection.main.from}
-        })
+      let {selectMatch} = this.view.state.facet(searchConfigFacet)
+      if (selectMatch) {
+        let selected = findNextInclusive(this.view)
+        if (prevQuery.valid && (!query.valid || !selected)) {
+          this.view.dispatch({
+            selection: {anchor: this.view.state.selection.main.from}
+          })
+        }
       }
     }
   }
