@@ -310,25 +310,6 @@ function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Co
   }
 }
 
-const findNextInclusive = (view: EditorView) => {
-  let state = view.state.field(searchState, false)
-  if (!state || !state.query.spec.valid) return false
-  let {from} = view.state.selection.main
-  let next = state.query.nextMatch(view.state.doc, from, from)
-  if (!next) return false
-  selectMatch(view, next)
-  return true
-}
-
-const selectMatch = (view: EditorView, next: SearchResult) => {
-  view.dispatch({
-    selection: {anchor: next.from, head: next.to},
-    scrollIntoView: true,
-    effects: announceMatch(view, next),
-    userEvent: "select.search"
-  })
-}
-
 /// Open the search panel if it isn't already open, and move the
 /// selection to the first match after the current main selection.
 /// Will wrap around to the start of the document when it reaches the
@@ -337,7 +318,12 @@ export const findNext = searchCommand((view, {query}) => {
   let {from, to} = view.state.selection.main
   let next = query.nextMatch(view.state.doc, from, to)
   if (!next || next.from == from && next.to == to) return false
-  selectMatch(view, next)
+  view.dispatch({
+    selection: {anchor: next.from, head: next.to},
+    scrollIntoView: true,
+    effects: announceMatch(view, next),
+    userEvent: "select.search"
+  })
   return true
 })
 
@@ -426,6 +412,29 @@ export const replaceAll = searchCommand((view, {query}) => {
   })
   return true
 })
+
+function nextMatchInclusive(state: EditorState) {
+  const {query} = state.field(searchState)
+  if (!query.spec.valid) return false
+
+  const {from} = state.selection.main
+  return query.nextMatch(state.doc, from, from)
+}
+
+function selectMatchOrReset(view: EditorView, prevQuery: SearchQuery) {
+  const next = nextMatchInclusive(view.state)
+
+  if (next) {
+    view.dispatch({
+      selection: {anchor: next.from, head: next.to},
+      scrollIntoView: true,
+      effects: announceMatch(view, next),
+      userEvent: 'select.search',
+    })
+  } else if (prevQuery.valid) {
+    view.dispatch({selection: {anchor: view.state.selection.main.from}})
+  }
+}
 
 function createSearchPanel(view: EditorView) {
   return view.state.facet(searchConfigFacet).createPanel(view)
@@ -566,14 +575,9 @@ class SearchPanel implements Panel {
       let prevQuery = this.query
       this.query = query
       this.view.dispatch({effects: setSearchQuery.of(query)})
-      let {selectMatch} = this.view.state.facet(searchConfigFacet)
-      if (selectMatch) {
-        let selected = findNextInclusive(this.view)
-        if (prevQuery.valid && (!query.valid || !selected)) {
-          this.view.dispatch({
-            selection: {anchor: this.view.state.selection.main.from}
-          })
-        }
+      let config = this.view.state.facet(searchConfigFacet)
+      if (config.selectMatch) {
+        selectMatchOrReset(this.view, prevQuery)
       }
     }
   }
