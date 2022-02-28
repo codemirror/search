@@ -75,6 +75,9 @@ export class SearchQuery {
   /// expression search, syntactically valid.
   readonly valid: boolean
 
+  /// @internal
+  readonly unquoted: string
+
   /// Create a query object.
   constructor(config: {
     /// The search string.
@@ -91,6 +94,8 @@ export class SearchQuery {
     this.regexp = !!config.regexp
     this.replace = config.replace || ""
     this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
+    this.unquoted = this.search.replace(/\\([nrt\\])/g,
+                                        (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
   /// Compare this query to another query.
@@ -102,6 +107,10 @@ export class SearchQuery {
   /// @internal
   create(): QueryType {
     return this.regexp ? new RegExpQuery(this) : new StringQuery(this)
+  }
+
+  getCursor(doc: Text, from: number = 0, to: number = doc.length): Iterator<{from: number, to: number}> {
+    return this.regexp ? regexpCursor(this, doc, from, to) : stringCursor(this, doc, from, to)
   }
 }
 
@@ -123,22 +132,18 @@ abstract class QueryType<Result extends SearchResult = SearchResult> {
 
 const enum FindPrev { ChunkSize = 10000 }
 
-class StringQuery extends QueryType<SearchResult> {
-  unquoted: string
+function stringCursor(spec: SearchQuery, doc: Text, from: number, to: number) {
+  return new SearchCursor(doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase())
+}
 
+class StringQuery extends QueryType<SearchResult> {
   constructor(spec: SearchQuery) {
     super(spec)
-    this.unquoted = spec.search.replace(/\\([nrt\\])/g,
-                                        (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
-  }
-
-  private cursor(doc: Text, from = 0, to = doc.length) {
-    return new SearchCursor(doc, this.unquoted, from, to, this.spec.caseSensitive ? undefined : x => x.toLowerCase())
   }
 
   nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = this.cursor(doc, curTo).nextOverlapping()
-    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).nextOverlapping()
+    let cursor = stringCursor(this.spec, doc, curTo, doc.length).nextOverlapping()
+    if (cursor.done) cursor = stringCursor(this.spec, doc, 0, curFrom).nextOverlapping()
     return cursor.done ? null : cursor.value
   }
 
@@ -146,8 +151,8 @@ class StringQuery extends QueryType<SearchResult> {
   // cursor, done by scanning chunk after chunk forward.
   private prevMatchInRange(doc: Text, from: number, to: number) {
     for (let pos = to;;) {
-      let start = Math.max(from, pos - FindPrev.ChunkSize - this.unquoted.length)
-      let cursor = this.cursor(doc, start, pos), range: SearchResult | null = null
+      let start = Math.max(from, pos - FindPrev.ChunkSize - this.spec.unquoted.length)
+      let cursor = stringCursor(this.spec, doc, start, pos), range: SearchResult | null = null
       while (!cursor.nextOverlapping().done) range = cursor.value
       if (range) return range
       if (start == from) return null
@@ -163,7 +168,7 @@ class StringQuery extends QueryType<SearchResult> {
   getReplacement(_result: SearchResult) { return this.spec.replace }
 
   matchAll(doc: Text, limit: number) {
-    let cursor = this.cursor(doc), ranges = []
+    let cursor = stringCursor(this.spec, doc, 0, doc.length), ranges = []
     while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
@@ -172,8 +177,8 @@ class StringQuery extends QueryType<SearchResult> {
   }
 
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
-    let cursor = this.cursor(doc, Math.max(0, from - this.unquoted.length),
-                             Math.min(to + this.unquoted.length, doc.length))
+    let cursor = stringCursor(this.spec, doc, Math.max(0, from - this.spec.unquoted.length),
+                              Math.min(to + this.spec.unquoted.length, doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 }
@@ -182,21 +187,21 @@ const enum RegExp { HighlightMargin = 250 }
 
 type RegExpResult = typeof RegExpCursor.prototype.value
 
-class RegExpQuery extends QueryType<RegExpResult> {
-  private cursor(doc: Text, from: number = 0, to: number = doc.length) {
-    return new RegExpCursor(doc, this.spec.search, this.spec.caseSensitive ? undefined : {ignoreCase: true}, from, to)
-  }
+function regexpCursor(spec: SearchQuery, doc: Text, from: number, to: number) {
+  return new RegExpCursor(doc, spec.search, spec.caseSensitive ? undefined : {ignoreCase: true}, from, to)
+}
 
+class RegExpQuery extends QueryType<RegExpResult> {
   nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = this.cursor(doc, curTo).next()
-    if (cursor.done) cursor = this.cursor(doc, 0, curFrom).next()
+    let cursor = regexpCursor(this.spec, doc, curTo, doc.length).next()
+    if (cursor.done) cursor = regexpCursor(this.spec, doc, 0, curFrom).next()
     return cursor.done ? null : cursor.value
   }
 
   private prevMatchInRange(doc: Text, from: number, to: number) {
     for (let size = 1;; size++) {
       let start = Math.max(from, to - size * FindPrev.ChunkSize)
-      let cursor = this.cursor(doc, start, to), range: RegExpResult | null = null
+      let cursor = regexpCursor(this.spec, doc, start, to), range: RegExpResult | null = null
       while (!cursor.next().done) range = cursor.value
       if (range && (start == from || range.from > start + 10)) return range
       if (start == from) return null
@@ -217,7 +222,7 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 
   matchAll(doc: Text, limit: number) {
-    let cursor = this.cursor(doc), ranges = []
+    let cursor = regexpCursor(this.spec, doc, 0, doc.length), ranges = []
     while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
@@ -226,8 +231,8 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 
   highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
-    let cursor = this.cursor(doc, Math.max(0, from - RegExp.HighlightMargin),
-                             Math.min(to + RegExp.HighlightMargin, doc.length))
+    let cursor = regexpCursor(this.spec, doc, Math.max(0, from - RegExp.HighlightMargin),
+                              Math.min(to + RegExp.HighlightMargin, doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 }
