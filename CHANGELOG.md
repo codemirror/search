@@ -1,3 +1,11 @@
+## 0.19.9 (2022-03-03)
+
+### New features
+
+The selection-matching extension now accepts a `wholeWords` option that makes it only highlight matches that span a whole word. Add SearchQuery.getCursor
+
+The `SearchQuery` class now has a `getCursor` method that allows external code to create a cursor for the query.
+
 ## 0.19.8 (2022-02-14)
 
 ### Bug fixes
