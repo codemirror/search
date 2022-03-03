@@ -104,6 +104,13 @@ export class SearchQuery {
       this.caseSensitive == other.caseSensitive && this.regexp == other.regexp
   }
 
+  /// Returns the number of matches in the given document. 
+  numMatches(doc: Text, limit: number = 1000) {
+    let query = this.create()
+    let matches = query.matchAll(doc, limit)
+    return matches ? matches.length : 0
+  }
+
   /// @internal
   create(): QueryType {
     return this.regexp ? new RegExpQuery(this) : new StringQuery(this)
