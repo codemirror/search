@@ -244,7 +244,7 @@ class RegExpQuery extends QueryType<RegExpResult> {
 /// once).
 export const setSearchQuery = StateEffect.define<SearchQuery>()
 
-const togglePanel = StateEffect.define<boolean>()
+export const togglePanel = StateEffect.define<boolean>()
 
 const searchState: StateField<SearchState> = StateField.define<SearchState>({
   create(state) {
