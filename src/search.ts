@@ -41,8 +41,7 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
   combine(configs) {
     return {
       top: configs.reduce((val, conf) => val ?? conf.top, undefined as boolean | undefined) || false,
-      caseSensitive: configs.reduce((val, conf) => val ?? (conf.caseSensitive || (conf as any).matchCase),
-                                    undefined as boolean | undefined) || false, // FIXME remove fallback on next major,
+      caseSensitive: configs.reduce((val, conf) => val ?? conf.caseSensitive, undefined as boolean | undefined) || false,
       createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view))
     }
   }
@@ -55,9 +54,6 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
 export function search(config?: SearchConfig): Extension {
   return config ? [searchConfigFacet.of(config), searchExtensions] : searchExtensions
 }
-
-/// @internal
-export const searchConfig = search // FIXME drop on next release
 
 /// A search query. Part of the editor's search state.
 export class SearchQuery {
