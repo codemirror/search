@@ -1,3 +1,9 @@
+## 0.19.10 (2022-04-04)
+
+### Bug fixes
+
+Make sure search matches are highlighted when scrolling new content into view.
+
 ## 0.19.9 (2022-03-03)
 
 ### New features
