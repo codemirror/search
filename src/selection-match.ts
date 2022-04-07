@@ -153,8 +153,8 @@ function findNextOccurrence(state: EditorState, query: string) {
   }
 }
 
-/// Select next occurrence of the current selection.
-/// Expand selection to the word when selection range is empty.
+/// Select next occurrence of the current selection. Expand selection
+/// to the surrounding word when the selection is empty.
 export const selectNextOccurrence: StateCommand = ({state, dispatch}) => {
   let {ranges} = state.selection
   if (ranges.some(sel => sel.from === sel.to)) return selectWord({state, dispatch})

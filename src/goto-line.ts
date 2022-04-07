@@ -46,7 +46,7 @@ function createLineDialog(view: EditorView): Panel {
     })
     view.focus()
   }
-  return {dom, pos: -10}
+  return {dom}
 }
 
 const dialogEffect = StateEffect.define<boolean>()

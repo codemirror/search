@@ -49,8 +49,8 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
 
 /// Add search state to the editor configuration, and optionally
 /// configure the search extension.
-/// ([`openSearchPanel`](#search.openSearchPanel) when automatically
-/// enable this if it isn't already on.)
+/// ([`openSearchPanel`](#search.openSearchPanel) will automatically
+/// enable this if it isn't already on).
 export function search(config?: SearchConfig): Extension {
   return config ? [searchConfigFacet.of(config), searchExtensions] : searchExtensions
 }
@@ -105,6 +105,8 @@ export class SearchQuery {
     return this.regexp ? new RegExpQuery(this) : new StringQuery(this)
   }
 
+  /// Get a search cursor for this query, searching through the given
+  /// range in the given document.
   getCursor(doc: Text, from: number = 0, to: number = doc.length): Iterator<{from: number, to: number}> {
     return this.regexp ? regexpCursor(this, doc, from, to) : stringCursor(this, doc, from, to)
   }
