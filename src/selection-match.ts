@@ -21,7 +21,7 @@ const defaultHighlightOptions = {
   highlightWordAroundCursor: false,
   minSelectionLength: 1,
   maxMatches: 100,
-  wholeWords: true
+  wholeWords: false
 }
 
 const highlightConfig = Facet.define<HighlightOptions, Required<HighlightOptions>>({
