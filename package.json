@@ -26,7 +26,6 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/panel": "^0.19.0",
     "@codemirror/rangeset": "^0.19.0",
     "@codemirror/state": "^0.19.3",
     "@codemirror/text": "^0.19.0",

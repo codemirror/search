@@ -1,6 +1,5 @@
-import {Panel, getPanel, showPanel} from "@codemirror/panel"
 import {EditorSelection, StateField, StateEffect} from "@codemirror/state"
-import {EditorView, Command} from "@codemirror/view"
+import {EditorView, Command, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
 
 function createLineDialog(view: EditorView): Panel {
