@@ -1,4 +1,4 @@
-import {Text, TextIterator} from "@codemirror/text"
+import {Text, TextIterator} from "@codemirror/state"
 
 const empty = {from: -1, to: -1, match: /.*/.exec("")!}
 

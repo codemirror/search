@@ -1,5 +1,5 @@
 import {SearchCursor, RegExpCursor} from "@codemirror/search"
-import {Text} from "@codemirror/text"
+import {Text} from "@codemirror/state"
 import ist from "ist"
 
 function testMatches(cursor: SearchCursor | RegExpCursor, expected: [number, number][]) {
