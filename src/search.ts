@@ -2,9 +2,8 @@ import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding,
         PanelConstructor, showPanel, Panel, getPanel} from "@codemirror/view"
 import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec,
-        Facet, Extension} from "@codemirror/state"
+        Facet, Extension, RangeSetBuilder} from "@codemirror/state"
 import {Text} from "@codemirror/text"
-import {RangeSetBuilder} from "@codemirror/rangeset"
 import elt from "crelt"
 import {SearchCursor} from "./cursor"
 import {RegExpCursor, validRegExp} from "./regexp"
