@@ -22,7 +22,7 @@ interface SearchConfig {
   caseSensitive?: boolean
 
   /// Can be used to override the way the search panel is implemented.
-  /// Should create a [Panel](#panel.Panel) that contains a form
+  /// Should create a [Panel](#view.Panel) that contains a form
   /// which lets the user:
   ///
   /// - See the [current](#search.getSearchQuery) search query.
