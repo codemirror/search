@@ -78,6 +78,8 @@ export class SearchQuery {
     search: string,
     /// Controls whether the search should be case-sensitive.
     caseSensitive?: boolean,
+    /// When true, interpret the search string as a literal sequence of characters.
+    literal?: boolean,
     /// When true, interpret the search string as a regular expression.
     regexp?: boolean,
     /// The replace text.
@@ -88,7 +90,7 @@ export class SearchQuery {
     this.regexp = !!config.regexp
     this.replace = config.replace || ""
     this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
-    this.unquoted = this.search.replace(/\\([nrt\\])/g,
+    this.unquoted = config.literal ? this.search : this.search.replace(/\\([nrt\\])/g,
                                         (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
