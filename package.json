@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/search",
-  "version": "0.19.10",
+  "version": "0.20.0",
   "description": "Search functionality for the CodeMirror code editor",
   "scripts": {
     "test": "cm-runtests",
@@ -26,7 +26,7 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/state": "^0.19.3",
+    "@codemirror/state": "^0.20.0",
     "@codemirror/view": "^0.20.0",
     "crelt": "^1.0.5"
   },

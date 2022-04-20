@@ -1,3 +1,9 @@
+## 0.20.0 (2022-04-20)
+
+### Bug fixes
+
+Make the `wholeWords` option to `highlightSelectionMatches` default to false, as intended.
+
 ## 0.19.10 (2022-04-04)
 
 ### Bug fixes
