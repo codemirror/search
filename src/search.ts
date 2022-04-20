@@ -78,7 +78,9 @@ export class SearchQuery {
     search: string,
     /// Controls whether the search should be case-sensitive.
     caseSensitive?: boolean,
-    /// When true, interpret the search string as a literal sequence of characters.
+    /// By default, string search will replace `\n`, `\r`, and `\t` in
+    /// the query with newline, return, and tab characters. When this
+    /// is set to true, that behavior is disabled.
     literal?: boolean,
     /// When true, interpret the search string as a regular expression.
     regexp?: boolean,
