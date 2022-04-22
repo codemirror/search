@@ -1,3 +1,9 @@
+## 0.20.1 (2022-04-22)
+
+### New features
+
+It is now possible to disable backslash escapes in search queries with the `literal` option.
+
 ## 0.20.0 (2022-04-20)
 
 ### Bug fixes
