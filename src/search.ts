@@ -431,8 +431,8 @@ export const openSearchPanel: Command = view => {
   if (state && state.panel) {
     let panel = getPanel(view, createSearchPanel)
     if (!panel) return false
-    let searchInput = panel.dom.querySelector("[name=search]") as HTMLInputElement
-    if (searchInput != view.root.activeElement) {
+    let searchInput = panel.dom.querySelector("[main-field]") as HTMLInputElement | null
+    if (searchInput && searchInput != view.root.activeElement) {
       let query = defaultQuery(view.state, state.query.spec)
       if (query.valid) view.dispatch({effects: setSearchQuery.of(query)})
       searchInput.focus()
@@ -492,6 +492,7 @@ class SearchPanel implements Panel {
       "aria-label": phrase(view, "Find"),
       class: "cm-textfield",
       name: "search",
+      "main-field": "true",
       onchange: this.commit,
       onkeyup: this.commit
     }) as HTMLInputElement
