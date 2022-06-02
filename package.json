@@ -26,7 +26,7 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/state": "^0.20.0",
+    "@codemirror/state": "^0.20.1",
     "@codemirror/view": "^0.20.0",
     "crelt": "^1.0.5"
   },

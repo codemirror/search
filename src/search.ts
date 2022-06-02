@@ -386,7 +386,7 @@ export const replaceNext = searchCommand((view, {query}) => {
     changes.push({from: next.from, to: next.to, insert: replacement})
     next = query.nextMatch(state.doc, next.from, next.to)
     announce.push(EditorView.announce.of(
-      `${state.phrase("replaced match on line $").replace("$", String(state.doc.lineAt(from).number))}.`))
+      state.phrase("replaced match on line $", state.doc.lineAt(from).number) + "."))
   }
   if (next) {
     let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - replacement!.length
@@ -411,7 +411,7 @@ export const replaceAll = searchCommand((view, {query}) => {
     return {from, to, insert: query.getReplacement(match)}
   })
   if (!changes.length) return false
-  let announceText = view.state.phrase("replaced $ matches").replace("$", String(changes.length)) + "."
+  let announceText = view.state.phrase("replaced $ matches", changes.length) + "."
   view.dispatch({
     changes,
     effects: EditorView.announce.of(announceText),
