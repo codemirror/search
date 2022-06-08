@@ -1,3 +1,11 @@
+## 6.0.0 (2022-06-08)
+
+### Bug fixes
+
+Don't crash when a custom search panel doesn't have a field named 'search'.
+
+Make sure replacements are announced to screen readers.
+
 ## 0.20.1 (2022-04-22)
 
 ### New features
