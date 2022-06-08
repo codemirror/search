@@ -1,6 +1,6 @@
 # @codemirror/search [![NPM version](https://img.shields.io/npm/v/@codemirror/search.svg)](https://www.npmjs.org/package/@codemirror/search)
 
-[ [**WEBSITE**](https://codemirror.net/) | [**DOCS**](https://codemirror.net/docs/ref/#search) | [**ISSUES**](https://github.com/codemirror/codemirror.next/issues) | [**FORUM**](https://discuss.codemirror.net/c/next/) | [**CHANGELOG**](https://github.com/codemirror/search/blob/main/CHANGELOG.md) ]
+[ [**WEBSITE**](https://codemirror.net/) | [**DOCS**](https://codemirror.net/docs/ref/#search) | [**ISSUES**](https://github.com/codemirror/dev/issues) | [**FORUM**](https://discuss.codemirror.net/c/next/) | [**CHANGELOG**](https://github.com/codemirror/search/blob/main/CHANGELOG.md) ]
 
 This package implements search functionality for the
 [CodeMirror](https://codemirror.net/) code editor.
