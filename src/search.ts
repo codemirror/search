@@ -32,6 +32,9 @@ interface SearchConfig {
   /// - Notice external changes to the query by reacting to the
   ///   appropriate [state effect](#search.setSearchQuery).
   /// - Run some of the search commands.
+  ///
+  /// The field that should be focused when opening the panel must be
+  /// tagged with a `main-field=true` DOM attribute.
   createPanel?: (view: EditorView) => Panel
 }
 
