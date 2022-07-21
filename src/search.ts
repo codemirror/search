@@ -319,9 +319,9 @@ function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Co
 /// Will wrap around to the start of the document when it reaches the
 /// end.
 export const findNext = searchCommand((view, {query}) => {
-  let {from, to} = view.state.selection.main
-  let next = query.nextMatch(view.state.doc, from, to)
-  if (!next || next.from == from && next.to == to) return false
+  let {to} = view.state.selection.main
+  let next = query.nextMatch(view.state.doc, to, to)
+  if (!next) return false
   view.dispatch({
     selection: {anchor: next.from, head: next.to},
     scrollIntoView: true,
@@ -335,8 +335,8 @@ export const findNext = searchCommand((view, {query}) => {
 /// before the current main selection. Will wrap past the start
 /// of the document to start searching at the end again.
 export const findPrevious = searchCommand((view, {query}) => {
-  let {state} = view, {from, to} = state.selection.main
-  let range = query.prevMatch(state.doc, from, to)
+  let {state} = view, {from} = state.selection.main
+  let range = query.prevMatch(state.doc, from, from)
   if (!range) return false
   view.dispatch({
     selection: {anchor: range.from, head: range.to},
