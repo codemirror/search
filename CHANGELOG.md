@@ -1,3 +1,9 @@
+## 6.0.1 (2022-07-22)
+
+### Bug fixes
+
+`findNext` and `findPrevious` will now return to the current result (and scroll it into view) if no other matches are found.
+
 ## 6.0.0 (2022-06-08)
 
 ### Bug fixes
