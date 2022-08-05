@@ -21,7 +21,7 @@ interface SearchConfig {
   /// Whether to enable case sensitivity by default when the search
   /// panel is activated (defaults to false).
   caseSensitive?: boolean
-  
+
   // Whether to treat string searches literally by default (defaults to false).
   literal?: boolean
 
