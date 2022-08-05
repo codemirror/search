@@ -21,6 +21,9 @@ interface SearchConfig {
   /// Whether to enable case sensitivity by default when the search
   /// panel is activated (defaults to false).
   caseSensitive?: boolean
+  
+  // Whether to treat string searches literally by default (defaults to false).
+  literal?: boolean
 
   /// Whether to enable whole word search by default when the search
   /// panel is activated (defaults to false).
@@ -48,6 +51,7 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
     return {
       top: configs.reduce((val, conf) => val ?? conf.top, undefined as boolean | undefined) || false,
       caseSensitive: configs.reduce((val, conf) => val ?? conf.caseSensitive, undefined as boolean | undefined) || false,
+      literal: configs.reduce((val, conf) => val ?? conf.literal, undefined as boolean | undefined) || false,
       wholeWord: configs.reduce((val, conf) => val ?? conf.wholeWord, undefined as boolean | undefined) || false,
       createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view))
     }
@@ -68,6 +72,10 @@ export class SearchQuery {
   readonly search: string
   /// Indicates whether the search is case-sensitive.
   readonly caseSensitive: boolean
+  /// By default, string search will replace `\n`, `\r`, and `\t` in
+  /// the query with newline, return, and tab characters. When this
+  /// is set to true, that behavior is disabled.
+  readonly literal: boolean
   /// Then true, the search string is interpreted as a regular
   /// expression.
   readonly regexp: boolean
@@ -102,11 +110,12 @@ export class SearchQuery {
   }) {
     this.search = config.search
     this.caseSensitive = !!config.caseSensitive
+    this.literal = !!config.literal
     this.regexp = !!config.regexp
     this.wholeWord = !!config.wholeWord && !config.regexp
     this.replace = config.replace || ""
     this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
-    this.unquoted = config.literal ? this.search : this.search.replace(/\\([nrt\\])/g,
+    this.unquoted = this.literal ? this.search : this.search.replace(/\\([nrt\\])/g,
                                         (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
@@ -487,13 +496,12 @@ function createSearchPanel(view: EditorView) {
 function defaultQuery(state: EditorState, fallback?: SearchQuery) {
   let sel = state.selection.main
   let selText = sel.empty || sel.to > sel.from + 100 ? "" : state.sliceDoc(sel.from, sel.to)
-  if (fallback && !selText) {
-      return fallback
-  }
+  if (fallback && !selText) return fallback
   let config = state.facet(searchConfigFacet)
   return new SearchQuery({
-    search: selText.replace(/\n/g, "\\n"),
+    search: (fallback?.literal ?? config.literal) ? selText : selText.replace(/\n/g, "\\n"),
     caseSensitive: fallback?.caseSensitive ?? config.caseSensitive,
+    literal: fallback?.literal ?? config.literal,
     wholeWord: fallback?.wholeWord ?? config.wholeWord,
   })
 }
