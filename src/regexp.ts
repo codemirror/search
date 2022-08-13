@@ -177,6 +177,7 @@ export function validRegExp(source: string) {
 }
 
 function toCharEnd(text: Text, pos: number) {
+  if (pos >= text.length) return pos
   let line = text.lineAt(pos), next
   while (pos < line.to && (next = line.text.charCodeAt(pos - line.from)) >= 0xDC00 && next < 0xE000) pos++
   return pos
