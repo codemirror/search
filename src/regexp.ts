@@ -26,13 +26,14 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
   /// Create a cursor that will search the given range in the given
   /// document. `query` should be the raw pattern (as you'd pass it to
   /// `new RegExp`).
-  constructor(text: Text, query: string, options?: {ignoreCase?: boolean}, from: number = 0, private to: number = text.length) {
+  constructor(private text: Text, query: string, options?: {ignoreCase?: boolean},
+              from: number = 0, private to: number = text.length) {
     if (/\\[sWDnr]|\n|\r|\[\^/.test(query)) return new MultilineRegExpCursor(text, query, options, from, to) as any
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
     this.iter = text.iter()
     let startLine = text.lineAt(from)
     this.curLineStart = startLine.from
-    this.matchPos = from
+    this.matchPos = toCharEnd(text, from)
     this.getLine(this.curLineStart)
   }
 
@@ -61,7 +62,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
       let match = this.matchPos <= this.to && this.re.exec(this.curLine)
       if (match) {
         let from = this.curLineStart + match.index, to = from + match[0].length
-        this.matchPos = to + (from == to ? 1 : 0)
+        this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
         if (from == this.curLine.length) this.nextLine()
         if (from < to || from > this.value.to) {
           this.value = {from, to, match}
@@ -120,7 +121,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
   value = empty
 
   constructor(private text: Text, query: string, options: {ignoreCase?: boolean} | undefined, from: number, private to: number) {
-    this.matchPos = from
+    this.matchPos = toCharEnd(text, from)
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
     this.flat = FlattenedDoc.get(text, from, this.chunkEnd(from + Chunk.Base))
   }
@@ -145,7 +146,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
       if (match) {
         let from = this.flat.from + match.index, to = from + match[0].length
         this.value = {from, to, match}
-        this.matchPos = to + (from == to ? 1 : 0)
+        this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
         return this
       } else {
         if (this.flat.to == this.to) {
@@ -173,4 +174,10 @@ export function validRegExp(source: string) {
   } catch {
     return false
   }
+}
+
+function toCharEnd(text: Text, pos: number) {
+  let line = text.lineAt(pos), next
+  while (pos < line.to && (next = line.text.charCodeAt(pos - line.from)) >= 0xDC00 && next < 0xE000) pos++
+  return pos
 }
