@@ -1,3 +1,15 @@
+## 6.1.0 (2022-08-16)
+
+### Bug fixes
+
+Fix an infinite loop when the match position of a `RegExpCursor` ended up in the middle of an UTF16 surrogate pair.
+
+### New features
+
+The `literal` search option can now be set to make literal queries the default. Move out of surrogate pairs when tracking match position in RegExpCursor
+
+The new `searchPanelOpen` function can be used to find out whether the search panel is open for a given state.
+
 ## 6.0.1 (2022-07-22)
 
 ### Bug fixes
