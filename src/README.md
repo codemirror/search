@@ -19,6 +19,7 @@
 @SearchQuery
 @getSearchQuery
 @setSearchQuery
+@searchPanelOpen
 
 ### Cursor
 

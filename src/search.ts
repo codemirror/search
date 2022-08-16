@@ -278,6 +278,11 @@ export function getSearchQuery(state: EditorState) {
   return curState ? curState.query.spec : defaultQuery(state)
 }
 
+/// Query whether the search panel is open in the given editor state.
+export function searchPanelOpen(state: EditorState) {
+  return state.field(searchState, false)?.panel != null
+}
+
 class SearchState {
   constructor(readonly query: QueryType, readonly panel: PanelConstructor | null) {}
 }
