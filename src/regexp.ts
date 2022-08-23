@@ -4,12 +4,18 @@ const empty = {from: -1, to: -1, match: /.*/.exec("")!}
 
 const baseFlags = "gm" + (/x/.unicode == null ? "" : "u")
 
+export interface RegExpCursorOptions {
+  ignoreCase?: boolean
+  test?: (from: number, to: number, match: RegExpExecArray) => boolean
+}
+
 /// This class is similar to [`SearchCursor`](#search.SearchCursor)
 /// but searches for a regular expression pattern instead of a plain
 /// string.
 export class RegExpCursor implements Iterator<{from: number, to: number, match: RegExpExecArray}> {
   private iter!: TextIterator
   private re!: RegExp
+  private test?: (from: number, to: number, match: RegExpExecArray) => boolean
   private curLine = ""
   private curLineStart!: number
   private matchPos!: number
@@ -26,10 +32,11 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
   /// Create a cursor that will search the given range in the given
   /// document. `query` should be the raw pattern (as you'd pass it to
   /// `new RegExp`).
-  constructor(private text: Text, query: string, options?: {ignoreCase?: boolean},
+  constructor(private text: Text, query: string, options?: RegExpCursorOptions,
               from: number = 0, private to: number = text.length) {
     if (/\\[sWDnr]|\n|\r|\[\^/.test(query)) return new MultilineRegExpCursor(text, query, options, from, to) as any
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
+    this.test = options?.test
     this.iter = text.iter()
     let startLine = text.lineAt(from)
     this.curLineStart = startLine.from
@@ -64,7 +71,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
         let from = this.curLineStart + match.index, to = from + match[0].length
         this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
         if (from == this.curLine.length) this.nextLine()
-        if (from < to || from > this.value.to) {
+        if ((from < to || from > this.value.to) && (!this.test || this.test(from, to, match))) {
           this.value = {from, to, match}
           return this
         }
@@ -116,13 +123,15 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
   private flat: FlattenedDoc
   private matchPos
   private re: RegExp
+  private test?: (from: number, to: number, match: RegExpExecArray) => boolean
 
   done = false
   value = empty
 
-  constructor(private text: Text, query: string, options: {ignoreCase?: boolean} | undefined, from: number, private to: number) {
+  constructor(private text: Text, query: string, options: RegExpCursorOptions | undefined, from: number, private to: number) {
     this.matchPos = toCharEnd(text, from)
     this.re = new RegExp(query, baseFlags + (options?.ignoreCase ? "i" : ""))
+    this.test = options?.test
     this.flat = FlattenedDoc.get(text, from, this.chunkEnd(from + Chunk.Base))
   }
 
@@ -139,23 +148,23 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
         this.re.lastIndex = off + 1
         match = this.re.exec(this.flat.text)
       }
-      // If a match goes almost to the end of a noncomplete chunk, try
-      // again, since it'll likely be able to match more
-      if (match && this.flat.to < this.to && match.index + match[0].length > this.flat.text.length - 10)
-        match = null
       if (match) {
         let from = this.flat.from + match.index, to = from + match[0].length
-        this.value = {from, to, match}
-        this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
-        return this
-      } else {
-        if (this.flat.to == this.to) {
-          this.done = true
+        // If a match goes almost to the end of a noncomplete chunk, try
+        // again, since it'll likely be able to match more
+        if ((this.flat.to >= this.to || match.index + match[0].length <= this.flat.text.length - 10) &&
+            (!this.test || this.test(from, to, match))) {
+          this.value = {from, to, match}
+          this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
           return this
         }
-        // Grow the flattened doc
-        this.flat = FlattenedDoc.get(this.text, this.flat.from, this.chunkEnd(this.flat.from + this.flat.text.length * 2))
       }
+      if (this.flat.to == this.to) {
+        this.done = true
+        return this
+      }
+      // Grow the flattened doc
+      this.flat = FlattenedDoc.get(this.text, this.flat.from, this.chunkEnd(this.flat.from + this.flat.text.length * 2))
     }
   }
 

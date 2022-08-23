@@ -2,7 +2,8 @@ import {EditorView, ViewPlugin, ViewUpdate, Command, Decoration, DecorationSet,
         runScopeHandlers, KeyBinding,
         PanelConstructor, showPanel, Panel, getPanel} from "@codemirror/view"
 import {EditorState, StateField, StateEffect, EditorSelection, StateCommand, Prec,
-        Facet, Extension, RangeSetBuilder, Text} from "@codemirror/state"
+        Facet, Extension, RangeSetBuilder, Text, CharCategory, findClusterBreak,
+        combineConfig} from "@codemirror/state"
 import elt from "crelt"
 import {SearchCursor} from "./cursor"
 import {RegExpCursor, validRegExp} from "./regexp"
@@ -21,8 +22,12 @@ interface SearchConfig {
   /// panel is activated (defaults to false).
   caseSensitive?: boolean
 
-  // Whether to treat string searches literally by default (defaults to false).
+  /// Whether to treat string searches literally by default (defaults to false).
   literal?: boolean
+
+  /// Controls whether the default query has by-word matching enabled.
+  /// Defaults to false.
+  wholeWord?: boolean
 
   /// Can be used to override the way the search panel is implemented.
   /// Should create a [Panel](#view.Panel) that contains a form
@@ -43,12 +48,13 @@ interface SearchConfig {
 
 const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.define({
   combine(configs) {
-    return {
-      top: configs.reduce((val, conf) => val ?? conf.top, undefined as boolean | undefined) || false,
-      caseSensitive: configs.reduce((val, conf) => val ?? conf.caseSensitive, undefined as boolean | undefined) || false,
-      literal: configs.reduce((val, conf) => val ?? conf.literal, undefined as boolean | undefined) || false,
-      createPanel: configs.find(c => c.createPanel)?.createPanel || (view => new SearchPanel(view))
-    }
+    return combineConfig(configs, {
+      top: false,
+      caseSensitive: false,
+      literal: false,
+      wholeWord: false,
+      createPanel: view => new SearchPanel(view)
+    })
   }
 })
 
@@ -70,7 +76,7 @@ export class SearchQuery {
   /// the query with newline, return, and tab characters. When this
   /// is set to true, that behavior is disabled.
   readonly literal: boolean
-  /// Then true, the search string is interpreted as a regular
+  /// When true, the search string is interpreted as a regular
   /// expression.
   readonly regexp: boolean
   /// The replace text, or the empty string if no replace text has
@@ -79,6 +85,9 @@ export class SearchQuery {
   /// Whether this query is non-empty and, in case of a regular
   /// expression search, syntactically valid.
   readonly valid: boolean
+  /// When true, matches that contain words are ignored when there are
+  /// further word characters around them.
+  readonly wholeWord: boolean
 
   /// @internal
   readonly unquoted: string
@@ -97,6 +106,8 @@ export class SearchQuery {
     regexp?: boolean,
     /// The replace text.
     replace?: string,
+    /// Enable whole-word matching.
+    wholeWord?: boolean
   }) {
     this.search = config.search
     this.caseSensitive = !!config.caseSensitive
@@ -106,12 +117,14 @@ export class SearchQuery {
     this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
     this.unquoted = this.literal ? this.search : this.search.replace(/\\([nrt\\])/g,
                                         (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
+    this.wholeWord = !!config.wholeWord
   }
 
   /// Compare this query to another query.
   eq(other: SearchQuery) {
     return this.search == other.search && this.replace == other.replace &&
-      this.caseSensitive == other.caseSensitive && this.regexp == other.regexp
+      this.caseSensitive == other.caseSensitive && this.regexp == other.regexp &&
+      this.wholeWord == other.wholeWord
   }
 
   /// @internal
@@ -120,9 +133,11 @@ export class SearchQuery {
   }
 
   /// Get a search cursor for this query, searching through the given
-  /// range in the given document.
-  getCursor(doc: Text, from: number = 0, to: number = doc.length): Iterator<{from: number, to: number}> {
-    return this.regexp ? regexpCursor(this, doc, from, to) : stringCursor(this, doc, from, to)
+  /// range in the given state.
+  getCursor(state: EditorState | Text, from: number = 0, to?: number): Iterator<{from: number, to: number}> {
+    let st = (state as any).doc ? state as EditorState : EditorState.create({doc: state as Text})
+    if (to == null) to = st.doc.length
+    return this.regexp ? regexpCursor(this, st, from, to) : stringCursor(this, st, from, to)
   }
 }
 
@@ -131,21 +146,36 @@ type SearchResult = typeof SearchCursor.prototype.value
 abstract class QueryType<Result extends SearchResult = SearchResult> {
   constructor(readonly spec: SearchQuery) {}
 
-  abstract nextMatch(doc: Text, curFrom: number, curTo: number): Result | null
+  abstract nextMatch(state: EditorState, curFrom: number, curTo: number): Result | null
 
-  abstract prevMatch(doc: Text, curFrom: number, curTo: number): Result | null
+  abstract prevMatch(state: EditorState, curFrom: number, curTo: number): Result | null
 
   abstract getReplacement(result: Result): string
 
-  abstract matchAll(doc: Text, limit: number): readonly Result[] | null
+  abstract matchAll(state: EditorState, limit: number): readonly Result[] | null
 
-  abstract highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void): void
+  abstract highlight(state: EditorState, from: number, to: number, add: (from: number, to: number) => void): void
 }
 
 const enum FindPrev { ChunkSize = 10000 }
 
-function stringCursor(spec: SearchQuery, doc: Text, from: number, to: number) {
-  return new SearchCursor(doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase())
+function stringCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  return new SearchCursor(
+    state.doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase(),
+    spec.wholeWord ? stringWordTest(state.doc, state.charCategorizer(state.selection.main.head)) : undefined)
+}
+
+function stringWordTest(doc: Text, categorizer: (ch: string) => CharCategory) {
+  return (from: number, to: number, buf: string, bufPos: number) => {
+    if (bufPos > from || bufPos + buf.length < to) {
+      bufPos = Math.max(0, from - 2)
+      buf = doc.sliceString(bufPos, Math.min(doc.length, to + 2))
+    }
+    return categorizer(charAfter(buf, from - bufPos)) != CharCategory.Word ||
+      categorizer(charBefore(buf, to - bufPos)) != CharCategory.Word ||
+      (categorizer(charBefore(buf, from - bufPos)) != CharCategory.Word &&
+       categorizer(charAfter(buf, to - bufPos)) != CharCategory.Word)
+  }
 }
 
 class StringQuery extends QueryType<SearchResult> {
@@ -153,18 +183,18 @@ class StringQuery extends QueryType<SearchResult> {
     super(spec)
   }
 
-  nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = stringCursor(this.spec, doc, curTo, doc.length).nextOverlapping()
-    if (cursor.done) cursor = stringCursor(this.spec, doc, 0, curFrom).nextOverlapping()
+  nextMatch(state: EditorState, curFrom: number, curTo: number) {
+    let cursor = stringCursor(this.spec, state, curTo, state.doc.length).nextOverlapping()
+    if (cursor.done) cursor = stringCursor(this.spec, state, 0, curFrom).nextOverlapping()
     return cursor.done ? null : cursor.value
   }
 
   // Searching in reverse is, rather than implementing inverted search
   // cursor, done by scanning chunk after chunk forward.
-  private prevMatchInRange(doc: Text, from: number, to: number) {
+  private prevMatchInRange(state: EditorState, from: number, to: number) {
     for (let pos = to;;) {
       let start = Math.max(from, pos - FindPrev.ChunkSize - this.spec.unquoted.length)
-      let cursor = stringCursor(this.spec, doc, start, pos), range: SearchResult | null = null
+      let cursor = stringCursor(this.spec, state, start, pos), range: SearchResult | null = null
       while (!cursor.nextOverlapping().done) range = cursor.value
       if (range) return range
       if (start == from) return null
@@ -172,15 +202,15 @@ class StringQuery extends QueryType<SearchResult> {
     }
   }
 
-  prevMatch(doc: Text, curFrom: number, curTo: number) {
-    return this.prevMatchInRange(doc, 0, curFrom) ||
-      this.prevMatchInRange(doc, curTo, doc.length)
+  prevMatch(state: EditorState, curFrom: number, curTo: number) {
+    return this.prevMatchInRange(state, 0, curFrom) ||
+      this.prevMatchInRange(state, curTo, state.doc.length)
   }
 
   getReplacement(_result: SearchResult) { return this.spec.replace }
 
-  matchAll(doc: Text, limit: number) {
-    let cursor = stringCursor(this.spec, doc, 0, doc.length), ranges = []
+  matchAll(state: EditorState, limit: number) {
+    let cursor = stringCursor(this.spec, state, 0, state.doc.length), ranges = []
     while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
@@ -188,9 +218,9 @@ class StringQuery extends QueryType<SearchResult> {
     return ranges
   }
 
-  highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
-    let cursor = stringCursor(this.spec, doc, Math.max(0, from - this.spec.unquoted.length),
-                              Math.min(to + this.spec.unquoted.length, doc.length))
+  highlight(state: EditorState, from: number, to: number, add: (from: number, to: number) => void) {
+    let cursor = stringCursor(this.spec, state, Math.max(0, from - this.spec.unquoted.length),
+                              Math.min(to + this.spec.unquoted.length, state.doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 }
@@ -199,30 +229,49 @@ const enum RegExp { HighlightMargin = 250 }
 
 type RegExpResult = typeof RegExpCursor.prototype.value
 
-function regexpCursor(spec: SearchQuery, doc: Text, from: number, to: number) {
-  return new RegExpCursor(doc, spec.search, spec.caseSensitive ? undefined : {ignoreCase: true}, from, to)
+function regexpCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  return new RegExpCursor(state.doc, spec.search, {
+    ignoreCase: !spec.caseSensitive,
+    test: spec.wholeWord ? regexpWordTest(state.charCategorizer(state.selection.main.head)) : undefined
+  }, from, to)
+}
+
+function charBefore(str: string, index: number) {
+  return str.slice(findClusterBreak(str, index, false), index)
+}
+function charAfter(str: string, index: number) {
+  return str.slice(index, findClusterBreak(str, index))
+}
+
+function regexpWordTest(categorizer: (ch: string) => CharCategory) {
+  return (_from: number, _to: number, match: RegExpExecArray) =>
+    !match[0].length ||
+    categorizer(charAfter(match.input, match.index)) != CharCategory.Word ||
+    categorizer(charBefore(match.input, match.index + match[0].length)) != CharCategory.Word ||
+    (categorizer(charBefore(match.input, match.index)) != CharCategory.Word &&
+     categorizer(charAfter(match.input, match.index + match[0].length)) != CharCategory.Word)
 }
 
 class RegExpQuery extends QueryType<RegExpResult> {
-  nextMatch(doc: Text, curFrom: number, curTo: number) {
-    let cursor = regexpCursor(this.spec, doc, curTo, doc.length).next()
-    if (cursor.done) cursor = regexpCursor(this.spec, doc, 0, curFrom).next()
+  nextMatch(state: EditorState, curFrom: number, curTo: number) {
+    let cursor = regexpCursor(this.spec, state, curTo, state.doc.length).next()
+    if (cursor.done) cursor = regexpCursor(this.spec, state, 0, curFrom).next()
     return cursor.done ? null : cursor.value
   }
 
-  private prevMatchInRange(doc: Text, from: number, to: number) {
+  private prevMatchInRange(state: EditorState, from: number, to: number) {
     for (let size = 1;; size++) {
       let start = Math.max(from, to - size * FindPrev.ChunkSize)
-      let cursor = regexpCursor(this.spec, doc, start, to), range: RegExpResult | null = null
+      let cursor = regexpCursor(this.spec, state, start, to), range: RegExpResult | null = null
       while (!cursor.next().done) range = cursor.value
       if (range && (start == from || range.from > start + 10)) return range
       if (start == from) return null
     }
   }
 
-  prevMatch(doc: Text, curFrom: number, curTo: number) {
-    return this.prevMatchInRange(doc, 0, curFrom) ||
-      this.prevMatchInRange(doc, curTo, doc.length)
+  prevMatch(state: EditorState, curFrom: number, curTo: number) {
+    return this.prevMatchInRange(state, 0, curFrom) ||
+      this.prevMatchInRange(state, curTo, state.doc.length)
   }
 
   getReplacement(result: RegExpResult) {
@@ -233,8 +282,8 @@ class RegExpQuery extends QueryType<RegExpResult> {
       : m)
   }
 
-  matchAll(doc: Text, limit: number) {
-    let cursor = regexpCursor(this.spec, doc, 0, doc.length), ranges = []
+  matchAll(state: EditorState, limit: number) {
+    let cursor = regexpCursor(this.spec, state, 0, state.doc.length), ranges = []
     while (!cursor.next().done) {
       if (ranges.length >= limit) return null
       ranges.push(cursor.value)
@@ -242,9 +291,9 @@ class RegExpQuery extends QueryType<RegExpResult> {
     return ranges
   }
 
-  highlight(doc: Text, from: number, to: number, add: (from: number, to: number) => void) {
-    let cursor = regexpCursor(this.spec, doc, Math.max(0, from - RegExp.HighlightMargin),
-                              Math.min(to + RegExp.HighlightMargin, doc.length))
+  highlight(state: EditorState, from: number, to: number, add: (from: number, to: number) => void) {
+    let cursor = regexpCursor(this.spec, state, Math.max(0, from - RegExp.HighlightMargin),
+                              Math.min(to + RegExp.HighlightMargin, state.doc.length))
     while (!cursor.next().done) add(cursor.value.from, cursor.value.to)
   }
 }
@@ -310,7 +359,7 @@ const searchHighlighter = ViewPlugin.fromClass(class {
     for (let i = 0, ranges = view.visibleRanges, l = ranges.length; i < l; i++) {
       let {from, to} = ranges[i]
       while (i < l - 1 && to > ranges[i + 1].from - 2 * RegExp.HighlightMargin) to = ranges[++i].to
-      query.highlight(view.state.doc, from, to, (from, to) => {
+      query.highlight(view.state, from, to, (from, to) => {
         let selected = view.state.selection.ranges.some(r => r.from == from && r.to == to)
         builder.add(from, to, selected ? selectedMatchMark : matchMark)
       })
@@ -334,7 +383,7 @@ function searchCommand(f: (view: EditorView, state: SearchState) => boolean): Co
 /// end.
 export const findNext = searchCommand((view, {query}) => {
   let {to} = view.state.selection.main
-  let next = query.nextMatch(view.state.doc, to, to)
+  let next = query.nextMatch(view.state, to, to)
   if (!next) return false
   view.dispatch({
     selection: {anchor: next.from, head: next.to},
@@ -350,7 +399,7 @@ export const findNext = searchCommand((view, {query}) => {
 /// of the document to start searching at the end again.
 export const findPrevious = searchCommand((view, {query}) => {
   let {state} = view, {from} = state.selection.main
-  let range = query.prevMatch(state.doc, from, from)
+  let range = query.prevMatch(state, from, from)
   if (!range) return false
   view.dispatch({
     selection: {anchor: range.from, head: range.to},
@@ -363,7 +412,7 @@ export const findPrevious = searchCommand((view, {query}) => {
 
 /// Select all instances of the search query.
 export const selectMatches = searchCommand((view, {query}) => {
-  let ranges = query.matchAll(view.state.doc, 1000)
+  let ranges = query.matchAll(view.state, 1000)
   if (!ranges || !ranges.length) return false
   view.dispatch({
     selection: EditorSelection.create(ranges.map(r => EditorSelection.range(r.from, r.to))),
@@ -394,14 +443,14 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
 export const replaceNext = searchCommand((view, {query}) => {
   let {state} = view, {from, to} = state.selection.main
   if (state.readOnly) return false
-  let next = query.nextMatch(state.doc, from, from)
+  let next = query.nextMatch(state, from, from)
   if (!next) return false
   let changes = [], selection: {anchor: number, head: number} | undefined, replacement: Text | undefined
   let announce = []
   if (next.from == from && next.to == to) {
     replacement = state.toText(query.getReplacement(next))
     changes.push({from: next.from, to: next.to, insert: replacement})
-    next = query.nextMatch(state.doc, next.from, next.to)
+    next = query.nextMatch(state, next.from, next.to)
     announce.push(EditorView.announce.of(
       state.phrase("replaced match on line $", state.doc.lineAt(from).number) + "."))
   }
@@ -423,7 +472,7 @@ export const replaceNext = searchCommand((view, {query}) => {
 /// replacement.
 export const replaceAll = searchCommand((view, {query}) => {
   if (view.state.readOnly) return false
-  let changes = query.matchAll(view.state.doc, 1e9)!.map(match => {
+  let changes = query.matchAll(view.state, 1e9)!.map(match => {
     let {from, to} = match
     return {from, to, insert: query.getReplacement(match)}
   })
@@ -450,6 +499,7 @@ function defaultQuery(state: EditorState, fallback?: SearchQuery) {
     search: (fallback?.literal ?? config.literal) ? selText : selText.replace(/\n/g, "\\n"),
     caseSensitive: fallback?.caseSensitive ?? config.caseSensitive,
     literal: fallback?.literal ?? config.literal,
+    wholeWord: fallback?.wholeWord ?? config.wholeWord
   })
 }
 

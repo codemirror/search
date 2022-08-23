@@ -33,7 +33,8 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
   /// (when supported).
   constructor(text: Text, query: string,
               from: number = 0, to: number = text.length,
-              normalize?: (string: string) => string) {
+              normalize?: (string: string) => string,
+              private test?: (from: number, to: number, buffer: string, bufferPos: number) => boolean) {
     this.iter = text.iterRange(from, to)
     this.bufferStart = from
     this.normalize = normalize ? x => normalize(basicNormalize(x)) : basicNormalize
@@ -109,6 +110,7 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
       else
         this.matches.push(1, pos)
     }
+    if (match && this.test && !this.test(match.from, match.to, this.buffer, this.bufferPos)) match = null
     return match
   }
 
