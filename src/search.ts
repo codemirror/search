@@ -557,6 +557,7 @@ class SearchPanel implements Panel {
   replaceField: HTMLInputElement
   caseField: HTMLInputElement
   reField: HTMLInputElement
+  wordField: HTMLInputElement
   dom: HTMLElement
   query: SearchQuery
 
@@ -595,6 +596,12 @@ class SearchPanel implements Panel {
       checked: query.regexp,
       onchange: this.commit
     }) as HTMLInputElement
+    this.wordField = elt("input", {
+      type: "checkbox",
+      name: "word",
+      checked: query.wholeWord,
+      onchange: this.commit
+    }) as HTMLInputElement
 
     function button(name: string, onclick: () => void, content: (Node | string)[]) {
       return elt("button", {class: "cm-button", name, onclick, type: "button"}, content)
@@ -606,6 +613,7 @@ class SearchPanel implements Panel {
       button("select", () => selectMatches(view), [phrase(view, "all")]),
       elt("label", null, [this.caseField, phrase(view, "match case")]),
       elt("label", null, [this.reField, phrase(view, "regexp")]),
+      elt("label", null, [this.wordField, phrase(view, "by word")]),
       ...view.state.readOnly ? [] : [
         elt("br"),
         this.replaceField,
@@ -626,7 +634,8 @@ class SearchPanel implements Panel {
       search: this.searchField.value,
       caseSensitive: this.caseField.checked,
       regexp: this.reField.checked,
-      replace: this.replaceField.value
+      wholeWord: this.wordField.checked,
+      replace: this.replaceField.value,
     })
     if (!query.eq(this.query)) {
       this.query = query
@@ -658,6 +667,7 @@ class SearchPanel implements Panel {
     this.replaceField.value = query.replace
     this.caseField.checked = query.caseSensitive
     this.reField.checked = query.regexp
+    this.wordField.checked = query.wholeWord
   }
 
   mount() {
