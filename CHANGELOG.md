@@ -1,3 +1,11 @@
+## 6.2.0 (2022-08-25)
+
+### New features
+
+A new `wholeWord` search query flag can be used to limit matches to whole words.
+
+`SearchCursor` and `RegExpCursor` now support a `test` parameter that can be used to ignore certain matches.
+
 ## 6.1.0 (2022-08-16)
 
 ### Bug fixes
