@@ -171,10 +171,10 @@ function stringWordTest(doc: Text, categorizer: (ch: string) => CharCategory) {
       bufPos = Math.max(0, from - 2)
       buf = doc.sliceString(bufPos, Math.min(doc.length, to + 2))
     }
-    return categorizer(charAfter(buf, from - bufPos)) != CharCategory.Word ||
-      categorizer(charBefore(buf, to - bufPos)) != CharCategory.Word ||
-      (categorizer(charBefore(buf, from - bufPos)) != CharCategory.Word &&
-       categorizer(charAfter(buf, to - bufPos)) != CharCategory.Word)
+    return (categorizer(charBefore(buf, from - bufPos)) != CharCategory.Word ||
+            categorizer(charAfter(buf, from - bufPos)) != CharCategory.Word) &&
+           (categorizer(charAfter(buf, to - bufPos)) != CharCategory.Word) ||
+            categorizer(charBefore(buf, to - bufPos)) != CharCategory.Word)
   }
 }
 
@@ -246,10 +246,10 @@ function charAfter(str: string, index: number) {
 function regexpWordTest(categorizer: (ch: string) => CharCategory) {
   return (_from: number, _to: number, match: RegExpExecArray) =>
     !match[0].length ||
-    categorizer(charAfter(match.input, match.index)) != CharCategory.Word ||
-    categorizer(charBefore(match.input, match.index + match[0].length)) != CharCategory.Word ||
-    (categorizer(charBefore(match.input, match.index)) != CharCategory.Word &&
-     categorizer(charAfter(match.input, match.index + match[0].length)) != CharCategory.Word)
+    (categorizer(charBefore(match.input, match.index)) != CharCategory.Word ||
+     categorizer(charAfter(match.input, match.index)) != CharCategory.Word) &&
+    (categorizer(charAfter(match.input, match.index + match[0].length)) != CharCategory.Word ||
+     categorizer(charBefore(match.input, match.index + match[0].length)) != CharCategory.Word)
 }
 
 class RegExpQuery extends QueryType<RegExpResult> {
