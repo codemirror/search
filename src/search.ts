@@ -173,7 +173,7 @@ function stringWordTest(doc: Text, categorizer: (ch: string) => CharCategory) {
     }
     return (categorizer(charBefore(buf, from - bufPos)) != CharCategory.Word ||
             categorizer(charAfter(buf, from - bufPos)) != CharCategory.Word) &&
-           (categorizer(charAfter(buf, to - bufPos)) != CharCategory.Word) ||
+           (categorizer(charAfter(buf, to - bufPos)) != CharCategory.Word ||
             categorizer(charBefore(buf, to - bufPos)) != CharCategory.Word)
   }
 }
