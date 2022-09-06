@@ -14,7 +14,7 @@ Fix an infinite loop when the match position of a `RegExpCursor` ended up in the
 
 ### New features
 
-The `literal` search option can now be set to make literal queries the default. Move out of surrogate pairs when tracking match position in RegExpCursor
+The `literal` search option can now be set to make literal queries the default.
 
 The new `searchPanelOpen` function can be used to find out whether the search panel is open for a given state.
 
