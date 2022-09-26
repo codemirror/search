@@ -1,3 +1,9 @@
+## 6.2.1 (2022-09-26)
+
+### Bug fixes
+
+By-word search queries will now skip any result that had word characters both before and after a match boundary.
+
 ## 6.2.0 (2022-08-25)
 
 ### New features
