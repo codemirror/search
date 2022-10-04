@@ -115,9 +115,14 @@ export class SearchQuery {
     this.regexp = !!config.regexp
     this.replace = config.replace || ""
     this.valid = !!this.search && (!this.regexp || validRegExp(this.search))
-    this.unquoted = this.literal ? this.search : this.search.replace(/\\([nrt\\])/g,
-                                        (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
+    this.unquoted = this.unquote(this.search)
     this.wholeWord = !!config.wholeWord
+  }
+
+  /// @internal
+  unquote(text: string) {
+    return this.literal ? text :
+      text.replace(/\\([nrt\\])/g, (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
   /// Compare this query to another query.
@@ -207,7 +212,7 @@ class StringQuery extends QueryType<SearchResult> {
       this.prevMatchInRange(state, curTo, state.doc.length)
   }
 
-  getReplacement(_result: SearchResult) { return this.spec.replace }
+  getReplacement(_result: SearchResult) { return this.spec.unquote(this.spec.replace) }
 
   matchAll(state: EditorState, limit: number) {
     let cursor = stringCursor(this.spec, state, 0, state.doc.length), ranges = []
@@ -275,11 +280,11 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 
   getReplacement(result: RegExpResult) {
-    return this.spec.replace.replace(/\$([$&\d+])/g, (m, i) =>
+    return this.spec.unquote(this.spec.replace.replace(/\$([$&\d+])/g, (m, i) =>
       i == "$" ? "$"
       : i == "&" ? result.match[0]
       : i != "0" && +i < result.match.length ? result.match[i]
-      : m)
+      : m))
   }
 
   matchAll(state: EditorState, limit: number) {
