@@ -576,6 +576,7 @@ class SearchPanel implements Panel {
       "aria-label": phrase(view, "Find"),
       class: "cm-textfield",
       name: "search",
+      form: "",
       "main-field": "true",
       onchange: this.commit,
       onkeyup: this.commit
@@ -586,24 +587,28 @@ class SearchPanel implements Panel {
       "aria-label": phrase(view, "Replace"),
       class: "cm-textfield",
       name: "replace",
+      form: "",
       onchange: this.commit,
       onkeyup: this.commit
     }) as HTMLInputElement
     this.caseField = elt("input", {
       type: "checkbox",
       name: "case",
+      form: "",
       checked: query.caseSensitive,
       onchange: this.commit
     }) as HTMLInputElement
     this.reField = elt("input", {
       type: "checkbox",
       name: "re",
+      form: "",
       checked: query.regexp,
       onchange: this.commit
     }) as HTMLInputElement
     this.wordField = elt("input", {
       type: "checkbox",
       name: "word",
+      form: "",
       checked: query.wholeWord,
       onchange: this.commit
     }) as HTMLInputElement
