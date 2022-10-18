@@ -1,3 +1,13 @@
+## 6.2.2 (2022-10-18)
+
+### Bug fixes
+
+When `literal` is off, \n, \r, and \t escapes are now also supported in replacement text.
+
+Make sure search dialog inputs don't get treated as form fields when the editor is created inside a form.
+
+Fix a bug in `RegExpCursor` that would cause it to stop matching in the middle of a line when its current match position was equal to the length of the line.
+
 ## 6.2.1 (2022-09-26)
 
 ### Bug fixes
