@@ -70,7 +70,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
       if (match) {
         let from = this.curLineStart + match.index, to = from + match[0].length
         this.matchPos = toCharEnd(this.text, to + (from == to ? 1 : 0))
-        if (from == this.curLine.length) this.nextLine()
+        if (from == this.curLineStart + this.curLine.length) this.nextLine()
         if ((from < to || from > this.value.to) && (!this.test || this.test(from, to, match))) {
           this.value = {from, to, match}
           return this
