@@ -628,14 +628,14 @@ class SearchPanel implements Panel {
         elt("br"),
         this.replaceField,
         button("replace", () => replaceNext(view), [phrase(view, "replace")]),
-        button("replaceAll", () => replaceAll(view), [phrase(view, "replace all")]),
-        elt("button", {
-          name: "close",
-          onclick: () => closeSearchPanel(view),
-          "aria-label": phrase(view, "close"),
-          type: "button"
-        }, ["×"])
-      ]
+        button("replaceAll", () => replaceAll(view), [phrase(view, "replace all")])
+      ],
+      elt("button", {
+        name: "close",
+        onclick: () => closeSearchPanel(view),
+        "aria-label": phrase(view, "close"),
+        type: "button"
+      }, ["×"])
     ])
   }
 
