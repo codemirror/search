@@ -1,3 +1,9 @@
+## 6.2.3 (2022-11-14)
+
+### Bug fixes
+
+Fix a bug that hid the search dialog's close button when the editor was read-only.
+
 ## 6.2.2 (2022-10-18)
 
 ### Bug fixes
