@@ -66,9 +66,6 @@ const dialogField = StateField.define<boolean>({
 /// `-`, document percentages suffixed with `%`, and an optional
 /// column position by adding `:` and a second number after the line
 /// number.
-///
-/// The dialog can be styled with the `panel.gotoLine` theme
-/// selector.
 export const gotoLine: Command = view => {
   let panel = getPanel(view, createLineDialog)
   if (!panel) {
