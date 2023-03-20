@@ -1,3 +1,9 @@
+## 6.3.0 (2023-03-20)
+
+### New features
+
+The new `scrollToMatch` search option allows you to adjust the way the editor scrolls search matches into view.
+
 ## 6.2.3 (2022-11-14)
 
 ### Bug fixes
