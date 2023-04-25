@@ -50,7 +50,7 @@ interface SearchConfig {
   /// [`EditorView.scrollIntoView`](#view.EditorView^scrollIntoView).
   /// This option allows you to pass a custom function to produce the
   /// scroll effect.
-  scrollToMatch?: (range: SelectionRange) => StateEffect<unknown>
+  scrollToMatch?: (range: SelectionRange, view: EditorView) => StateEffect<unknown>
 }
 
 const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.define({
@@ -402,7 +402,7 @@ export const findNext = searchCommand((view, {query}) => {
   let config = view.state.facet(searchConfigFacet)
   view.dispatch({
     selection,
-    effects: [announceMatch(view, next), config.scrollToMatch(selection.main)],
+    effects: [announceMatch(view, next), config.scrollToMatch(selection.main, view)],
     userEvent: "select.search"
   })
   return true
@@ -419,7 +419,7 @@ export const findPrevious = searchCommand((view, {query}) => {
   let config = view.state.facet(searchConfigFacet)
   view.dispatch({
     selection,
-    effects: [announceMatch(view, prev), config.scrollToMatch(selection.main)],
+    effects: [announceMatch(view, prev), config.scrollToMatch(selection.main, view)],
     userEvent: "select.search"
   })
   return true
@@ -473,7 +473,7 @@ export const replaceNext = searchCommand((view, {query}) => {
     let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - replacement!.length
     selection = EditorSelection.single(next.from - off, next.to - off)
     effects.push(announceMatch(view, next))
-    effects.push(state.facet(searchConfigFacet).scrollToMatch(selection.main))
+    effects.push(state.facet(searchConfigFacet).scrollToMatch(selection.main, view))
   }
   view.dispatch({
     changes, selection, effects,
