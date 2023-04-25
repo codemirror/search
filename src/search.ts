@@ -405,6 +405,7 @@ export const findNext = searchCommand((view, {query}) => {
     effects: [announceMatch(view, next), config.scrollToMatch(selection.main, view)],
     userEvent: "select.search"
   })
+  selectSearchInput(view)
   return true
 })
 
@@ -422,6 +423,7 @@ export const findPrevious = searchCommand((view, {query}) => {
     effects: [announceMatch(view, prev), config.scrollToMatch(selection.main, view)],
     userEvent: "select.search"
   })
+  selectSearchInput(view)
   return true
 })
 
@@ -517,13 +519,22 @@ function defaultQuery(state: EditorState, fallback?: SearchQuery) {
   })
 }
 
+function getSearchInput(view: EditorView) {
+  let panel = getPanel(view, createSearchPanel)
+  return panel && panel.dom.querySelector("[main-field]") as HTMLInputElement | null
+}
+
+function selectSearchInput(view: EditorView) {
+  let input = getSearchInput(view)
+  if (input && input == view.root.activeElement)
+    input.select()
+}
+
 /// Make sure the search panel is open and focused.
 export const openSearchPanel: Command = view => {
   let state = view.state.field(searchState, false)
   if (state && state.panel) {
-    let panel = getPanel(view, createSearchPanel)
-    if (!panel) return false
-    let searchInput = panel.dom.querySelector("[main-field]") as HTMLInputElement | null
+    let searchInput = getSearchInput(view)
     if (searchInput && searchInput != view.root.activeElement) {
       let query = defaultQuery(view.state, state.query.spec)
       if (query.valid) view.dispatch({effects: setSearchQuery.of(query)})
