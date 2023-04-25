@@ -1,3 +1,13 @@
+## 6.4.0 (2023-04-25)
+
+### Bug fixes
+
+The `findNext` and `findPrevious` commands now select the search field text if that field is focused.
+
+### New features
+
+The `scrollToMatch` callback option now receives the editor view as a second parameter.
+
 ## 6.3.0 (2023-03-20)
 
 ### New features
