@@ -29,6 +29,10 @@ interface SearchConfig {
   /// Defaults to false.
   wholeWord?: boolean
 
+  /// Used to turn on regular expression search in the default query.
+  /// Defaults to false.
+  regexp?: boolean
+
   /// Can be used to override the way the search panel is implemented.
   /// Should create a [Panel](#view.Panel) that contains a form
   /// which lets the user:
@@ -59,6 +63,7 @@ const searchConfigFacet: Facet<SearchConfig, Required<SearchConfig>> = Facet.def
       top: false,
       caseSensitive: false,
       literal: false,
+      regexp: false,
       wholeWord: false,
       createPanel: view => new SearchPanel(view),
       scrollToMatch: range => EditorView.scrollIntoView(range)
@@ -515,6 +520,7 @@ function defaultQuery(state: EditorState, fallback?: SearchQuery) {
     search: (fallback?.literal ?? config.literal) ? selText : selText.replace(/\n/g, "\\n"),
     caseSensitive: fallback?.caseSensitive ?? config.caseSensitive,
     literal: fallback?.literal ?? config.literal,
+    regexp: fallback?.regexp ?? config.regexp,
     wholeWord: fallback?.wholeWord ?? config.wholeWord
   })
 }
