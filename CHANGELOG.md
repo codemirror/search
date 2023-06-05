@@ -1,3 +1,9 @@
+## 6.5.0 (2023-06-05)
+
+### New features
+
+The new `regexp` option to `search` can be used to control whether queries have the regexp flag on by default.
+
 ## 6.4.0 (2023-04-25)
 
 ### Bug fixes
