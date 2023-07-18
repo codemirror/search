@@ -38,10 +38,10 @@ function createLineDialog(view: EditorView): Panel {
       line = line * (sign == "-" ? -1 : 1) + startLine.number
     }
     let docLine = state.doc.line(Math.max(1, Math.min(state.doc.lines, line)))
+    let selection = EditorSelection.cursor(docLine.from + Math.max(0, Math.min(col, docLine.length)))
     view.dispatch({
-      effects: dialogEffect.of(false),
-      selection: EditorSelection.cursor(docLine.from + Math.max(0, Math.min(col, docLine.length))),
-      scrollIntoView: true
+      effects: [dialogEffect.of(false), EditorView.scrollIntoView(selection.from, {y: 'center'})],
+      selection,
     })
     view.focus()
   }
