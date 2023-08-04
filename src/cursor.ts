@@ -77,11 +77,13 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
       for (let i = 0, pos = start;; i++) {
         let code = norm.charCodeAt(i)
         let match = this.match(code, pos)
-        if (match) {
-          this.value = match
-          return this
-         }
-        if (i == norm.length - 1) break
+        if (i == norm.length - 1) {
+          if (match) {
+            this.value = match
+            return this
+          }
+          break
+        }
         if (pos == start && i < str.length && str.charCodeAt(i) == code) pos++
       }
     }
