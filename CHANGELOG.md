@@ -1,3 +1,11 @@
+## 6.5.1 (2023-08-04)
+
+### Bug fixes
+
+Make `gotoLine` prefer to scroll the target line to the middle of the view.
+
+Fix an issue in `SearchCursor` where character normalization could produce nonsensical matches.
+
 ## 6.5.0 (2023-06-05)
 
 ### New features
