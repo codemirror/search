@@ -1,3 +1,9 @@
+## 6.5.2 (2023-08-26)
+
+### Bug fixes
+
+Don't use the very lowest precedence for match highlighting decorations.
+
 ## 6.5.1 (2023-08-04)
 
 ### Bug fixes
