@@ -3,7 +3,8 @@ import {EditorView, Command, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
 
 function createLineDialog(view: EditorView): Panel {
-  let input = elt("input", {class: "cm-textfield", name: "line"}) as HTMLInputElement
+  let line = String(view.state.doc.lineAt(view.state.selection.main.head).number)
+  let input = elt("input", {class: "cm-textfield", name: "line", value: line}) as HTMLInputElement
   let dom = elt("form", {
     class: "cm-gotoLine",
     onkeydown: (event: KeyboardEvent) => {
@@ -75,7 +76,7 @@ export const gotoLine: Command = view => {
     view.dispatch({effects})
     panel = getPanel(view, createLineDialog)
   }
-  if (panel) panel.dom.querySelector("input")!.focus()
+  if (panel) panel.dom.querySelector("input")!.select()
   return true
 }
 
