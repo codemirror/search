@@ -1,3 +1,9 @@
+## 6.5.3 (2023-09-14)
+
+### Bug fixes
+
+The `gotoLine` dialog is now populated with the current line number when you open it.
+
 ## 6.5.2 (2023-08-26)
 
 ### Bug fixes
