@@ -1,3 +1,9 @@
+## 6.5.4 (2023-09-20)
+
+### Bug fixes
+
+Fix a bug that caused whole-word search to incorrectly check for word boundaries in some circumstances.
+
 ## 6.5.3 (2023-09-14)
 
 ### Bug fixes
