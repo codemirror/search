@@ -112,7 +112,7 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
       else
         this.matches.push(1, pos)
     }
-    if (match && this.test && !this.test(match.from, match.to, this.buffer, this.bufferPos)) match = null
+    if (match && this.test && !this.test(match.from, match.to, this.buffer, this.bufferStart)) match = null
     return match
   }
 
