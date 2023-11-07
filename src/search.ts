@@ -293,11 +293,11 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 
   getReplacement(result: RegExpResult) {
-    return this.spec.unquote(this.spec.replace.replace(/\$([$&\d+])/g, (m, i) =>
+    return this.spec.unquote(this.spec.replace).replace(/\$([$&\d+])/g, (m, i) =>
       i == "$" ? "$"
       : i == "&" ? result.match[0]
       : i != "0" && +i < result.match.length ? result.match[i]
-      : m))
+      : m)
   }
 
   matchAll(state: EditorState, limit: number) {
