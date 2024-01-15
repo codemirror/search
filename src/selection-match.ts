@@ -87,10 +87,10 @@ const matchHighlighter = ViewPlugin.fromClass(class {
       if (conf.wholeWords) {
         query = state.sliceDoc(range.from, range.to) // TODO: allow and include leading/trailing space?
         check = state.charCategorizer(range.head)
-        if (!(insideWordBoundaries(check, state, range.from, range.to)
-            && insideWord(check, state, range.from, range.to))) return Decoration.none
+        if (!(insideWordBoundaries(check, state, range.from, range.to) &&
+              insideWord(check, state, range.from, range.to))) return Decoration.none
       } else {
-        query = state.sliceDoc(range.from, range.to).trim()
+        query = state.sliceDoc(range.from, range.to)
         if (!query) return Decoration.none
       }
     }
