@@ -1,3 +1,11 @@
+## 6.5.6 (2024-02-07)
+
+### Bug fixes
+
+Make `highlightSelectionMatches` include whitespace in the selection in its matches.
+
+Fix a bug that caused `SearchCursor` to return invalid ranges when matching astral chars that the the normalizer normalized to single-code-unit chars.
+
 ## 6.5.5 (2023-11-27)
 
 ### Bug fixes
