@@ -64,6 +64,10 @@ describe("SearchCursor", () => {
   it("will not match partial normalized content", () => {
     testMatches(new SearchCursor(Text.of(["´"]), " "), [])
   })
+
+  it("produces the correct range for astral chars that get normalized to non-astral", () => {
+    testMatches(new SearchCursor(Text.of(["𝜎"]), "𝜎"), [[0, 2]])
+  })
 })
 
 describe("RegExpCursor", () => {
