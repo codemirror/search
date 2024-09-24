@@ -203,8 +203,11 @@ class StringQuery extends QueryType<SearchResult> {
 
   nextMatch(state: EditorState, curFrom: number, curTo: number) {
     let cursor = stringCursor(this.spec, state, curTo, state.doc.length).nextOverlapping()
-    if (cursor.done) cursor = stringCursor(this.spec, state, 0, curFrom).nextOverlapping()
-    return cursor.done ? null : cursor.value
+    if (cursor.done) {
+      let end = Math.min(state.doc.length, curFrom + this.spec.unquoted.length)
+      cursor = stringCursor(this.spec, state, 0, end).nextOverlapping()
+    }
+    return cursor.done || cursor.value.from == curFrom && cursor.value.to == curTo ? null : cursor.value
   }
 
   // Searching in reverse is, rather than implementing an inverted search
@@ -221,8 +224,10 @@ class StringQuery extends QueryType<SearchResult> {
   }
 
   prevMatch(state: EditorState, curFrom: number, curTo: number) {
-    return this.prevMatchInRange(state, 0, curFrom) ||
-      this.prevMatchInRange(state, curTo, state.doc.length)
+    let found = this.prevMatchInRange(state, 0, curFrom)
+    if (!found)
+      found = this.prevMatchInRange(state, Math.max(0, curTo - this.spec.unquoted.length), state.doc.length)
+    return found && (found.from != curFrom || found.to != curTo) ? found : null
   }
 
   getReplacement(_result: SearchResult) { return this.spec.unquote(this.spec.replace) }
