@@ -1,3 +1,11 @@
+## 6.5.7 (2024-11-01)
+
+### Bug fixes
+
+Fix an issue where `findNext` and `findPrevious` would do nothing when the only match in the document was partially selected.
+
+Fix an infinite loop in `SearchCursor` when the normalizer function deletes characters.
+
 ## 6.5.6 (2024-02-07)
 
 ### Bug fixes
