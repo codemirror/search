@@ -68,6 +68,10 @@ describe("SearchCursor", () => {
   it("produces the correct range for astral chars that get normalized to non-astral", () => {
     testMatches(new SearchCursor(Text.of(["𝜎"]), "𝜎"), [[0, 2]])
   })
+
+  it("can handle normalizers that remove text", () => {
+    testMatches(new SearchCursor(Text.of(["hello"]), "halal", 0, 5, s => s.replace(/[aeuoi]/g, "")), [[0, 4]])
+  })
 })
 
 describe("RegExpCursor", () => {
