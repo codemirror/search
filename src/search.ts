@@ -470,8 +470,9 @@ export const selectSelectionMatches: StateCommand = ({state, dispatch}) => {
 export const replaceNext = searchCommand((view, {query}) => {
   let {state} = view, {from, to} = state.selection.main
   if (state.readOnly) return false
-  let next = query.nextMatch(state, from, from)
-  if (!next) return false
+  let match = query.nextMatch(state, from, from)
+  if (!match) return false
+  let next: SearchResult | null = match
   let changes = [], selection: EditorSelection | undefined, replacement: Text | undefined
   let effects: StateEffect<unknown>[] = []
   if (next.from == from && next.to == to) {
@@ -482,7 +483,7 @@ export const replaceNext = searchCommand((view, {query}) => {
       state.phrase("replaced match on line $", state.doc.lineAt(from).number) + "."))
   }
   if (next) {
-    let off = changes.length == 0 || changes[0].from >= next.to ? 0 : next.to - next.from - replacement!.length
+    let off = changes.length == 0 || changes[0].from >= match.to ? 0 : match.to - match.from - replacement!.length
     selection = EditorSelection.single(next.from - off, next.to - off)
     effects.push(announceMatch(view, next))
     effects.push(state.facet(searchConfigFacet).scrollToMatch(selection.main, view))
