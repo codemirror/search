@@ -1,3 +1,9 @@
+## 6.5.8 (2024-11-22)
+
+### Bug fixes
+
+Fix a bug that put the selection in the wrong place after running `replaceNext` with a regexp query that could match strings of different length.
+
 ## 6.5.7 (2024-11-01)
 
 ### Bug fixes
