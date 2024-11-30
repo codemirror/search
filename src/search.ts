@@ -298,11 +298,15 @@ class RegExpQuery extends QueryType<RegExpResult> {
   }
 
   getReplacement(result: RegExpResult) {
-    return this.spec.unquote(this.spec.replace).replace(/\$([$&\d+])/g, (m, i) =>
-      i == "$" ? "$"
-      : i == "&" ? result.match[0]
-      : i != "0" && +i < result.match.length ? result.match[i]
-      : m)
+    return this.spec.unquote(this.spec.replace).replace(/\$([$&]|\d+)/g, (m, i) => {
+      if (i == "&") return result.match[0]
+      if (i == "$") return "$"
+      for (let l = i.length; l > 0; l--) {
+        let n = +i.slice(0, l)
+        if (n > 0 && n < result.match.length) return result.match[n] + i.slice(l)
+      }
+      return m
+    })
   }
 
   matchAll(state: EditorState, limit: number) {
