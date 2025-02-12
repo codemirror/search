@@ -1,3 +1,9 @@
+## 6.5.9 (2025-02-12)
+
+### Bug fixes
+
+When replacing a regexp match, don't expand multi-digit replacement markers to numbers beyond the captured group count in the query.
+
 ## 6.5.8 (2024-11-22)
 
 ### Bug fixes
