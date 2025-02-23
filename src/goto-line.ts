@@ -22,7 +22,16 @@ function createLineDialog(view: EditorView): Panel {
       go()
     }
   }, elt("label", view.state.phrase("Go to line"), ": ", input), " ",
-     elt("button", {class: "cm-button", type: "submit"}, view.state.phrase("go")))
+     elt("button", {class: "cm-button", type: "submit"}, view.state.phrase("go")),
+     elt("button", {
+       name: "close",
+       onclick: () => {
+         view.dispatch({effects: dialogEffect.of(false)})
+         view.focus()
+       },
+       "aria-label": view.state.phrase("close"),
+       type: "button"
+     }, ["×"]))
 
   function go() {
     let match = /^([+-])?(\d+)?(:\d+)?(%)?$/.exec(input.value)
@@ -83,6 +92,16 @@ export const gotoLine: Command = view => {
 const baseTheme = EditorView.baseTheme({
   ".cm-panel.cm-gotoLine": {
     padding: "2px 6px 4px",
-    "& label": { fontSize: "80%" }
+    position: "relative",
+    "& label": { fontSize: "80%" },
+    "& [name=close]": {
+      position: "absolute",
+      top: "0", bottom: "0",
+      right: "4px",
+      backgroundColor: "inherit",
+      border: "none",
+      font: "inherit",
+      padding: "0"
+    }
   }
 })
