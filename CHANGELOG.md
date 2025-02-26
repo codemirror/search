@@ -1,3 +1,9 @@
+## 6.5.10 (2025-02-26)
+
+### Bug fixes
+
+Add a close button to the `gotoLine` panel.
+
 ## 6.5.9 (2025-02-12)
 
 ### Bug fixes
