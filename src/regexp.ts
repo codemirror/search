@@ -13,12 +13,12 @@ export interface RegExpCursorOptions {
 /// but searches for a regular expression pattern instead of a plain
 /// string.
 export class RegExpCursor implements Iterator<{from: number, to: number, match: RegExpExecArray}> {
-  private iter!: TextIterator
-  private re!: RegExp
+  declare private iter: TextIterator
+  declare private re: RegExp
   private test?: (from: number, to: number, match: RegExpExecArray) => boolean
   private curLine = ""
-  private curLineStart!: number
-  private matchPos!: number
+  declare private curLineStart: number
+  declare private matchPos: number
 
   /// Set to `true` when the cursor has reached the end of the search
   /// range.
@@ -86,7 +86,7 @@ export class RegExpCursor implements Iterator<{from: number, to: number, match: 
     }
   }
 
-  [Symbol.iterator]!: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
+  declare [Symbol.iterator]: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
 }
 
 const flattened = new WeakMap<Text, FlattenedDoc>()
@@ -168,7 +168,7 @@ class MultilineRegExpCursor implements Iterator<{from: number, to: number, match
     }
   }
 
-  [Symbol.iterator]!: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
+  declare [Symbol.iterator]: () => Iterator<{from: number, to: number, match: RegExpExecArray}>
 }
 
 if (typeof Symbol != "undefined") {

@@ -116,7 +116,7 @@ export class SearchCursor implements Iterator<{from: number, to: number}>{
     return match
   }
 
-  [Symbol.iterator]!: () => Iterator<{from: number, to: number}>
+  declare [Symbol.iterator]: () => Iterator<{from: number, to: number}>
 }
 
 if (typeof Symbol != "undefined")
