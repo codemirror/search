@@ -486,14 +486,16 @@ export const replaceNext = searchCommand((view, {query}) => {
     effects.push(EditorView.announce.of(
       state.phrase("replaced match on line $", state.doc.lineAt(from).number) + "."))
   }
+  let changeSet = view.state.changes(changes)
   if (next) {
-    let off = changes.length == 0 || changes[0].from >= match.to ? 0 : match.to - match.from - replacement!.length
-    selection = EditorSelection.single(next.from - off, next.to - off)
+    selection = EditorSelection.single(next.from, next.to).map(changeSet)
     effects.push(announceMatch(view, next))
     effects.push(state.facet(searchConfigFacet).scrollToMatch(selection.main, view))
   }
   view.dispatch({
-    changes, selection, effects,
+    changes: changeSet,
+    selection,
+    effects,
     userEvent: "input.replace"
   })
   return true
