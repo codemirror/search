@@ -1,3 +1,9 @@
+## 6.5.11 (2025-05-14)
+
+### Bug fixes
+
+Fix an issue in `replaceNext` that could cause it to create an invalid selection when replacing past the end of the document.
+
 ## 6.5.10 (2025-02-26)
 
 ### Bug fixes
