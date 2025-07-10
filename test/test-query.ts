@@ -58,4 +58,36 @@ describe("SearchQuery", () => {
   it("can match regular expressions by word", () => {
     test(new SearchQuery({search: "a..", regexp: true, wholeWord: true}), "[aap] baap aapje [a--]w")
   })
+
+  it("can filter string matches with a test function", () => {
+    test(new SearchQuery({
+      search: "ab",
+      test(match, state, from, to) {
+        ist(match, state.doc.sliceString(from, to))
+        return from > 0
+      }
+    }), "ab a[ab] [ab]")
+  })
+
+  it("combines whole-word matches with a test function", () => {
+    test(new SearchQuery({
+      search: "ab",
+      wholeWord: true,
+      test(match, state, from, to) {
+        ist(match, state.doc.sliceString(from, to))
+        return from > 0
+      }
+    }), "ab xab [ab]")
+  })
+
+  it("can filter regexp matches with a test function", () => {
+    test(new SearchQuery({
+      search: "a.",
+      regexp: true,
+      test(match, state, from, to) {
+        ist(match, state.doc.sliceString(from, to))
+        return match != "aa"
+      }
+    }), "[ab] aa [ac]")
+  })
 })
