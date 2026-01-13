@@ -105,8 +105,8 @@ export class SearchQuery {
   /// @internal
   readonly unquoted: string
 
-  readonly test: ((from: number, to: number, buffer: string, bufferPos: number) => boolean) | undefined
-  readonly regexpTest: ((from: number, to: number, match: RegExpExecArray) => boolean) | undefined
+  /// Optional test function used to filter matches.
+  readonly test: ((match: string, state: EditorState, from: number, to: number) => boolean) | undefined
 
   /// Create a query object.
   constructor(config: {
@@ -125,8 +125,9 @@ export class SearchQuery {
     /// Enable whole-word matching.
     wholeWord?: boolean
 
-    test?: (from: number, to: number, buffer: string, bufferPos: number) => boolean
-    regexpTest?: (from: number, to: number, match: RegExpExecArray) => boolean
+    /// Optional function to filter matches. It is passed the matched
+    /// string, the editor state, and the match range.
+    test?: (match: string, state: EditorState, from: number, to: number) => boolean
   }) {
     this.search = config.search
     this.caseSensitive = !!config.caseSensitive
@@ -137,7 +138,6 @@ export class SearchQuery {
     this.unquoted = this.unquote(this.search)
     this.wholeWord = !!config.wholeWord
     this.test = config.test
-    this.regexpTest = config.regexpTest
   }
 
   /// @internal
@@ -150,7 +150,7 @@ export class SearchQuery {
   eq(other: SearchQuery) {
     return this.search == other.search && this.replace == other.replace &&
       this.caseSensitive == other.caseSensitive && this.regexp == other.regexp &&
-      this.wholeWord == other.wholeWord
+      this.wholeWord == other.wholeWord && this.test == other.test
   }
 
   /// @internal
@@ -186,15 +186,22 @@ abstract class QueryType<Result extends SearchResult = SearchResult> {
 const enum FindPrev { ChunkSize = 10000 }
 
 function stringCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  const wordTest = spec.wholeWord ? stringWordTest(state.doc, state.charCategorizer(state.selection.main.head)) : undefined
   const test = (from: number, to: number, buffer: string, bufferPos: number) => {
     return (
-      (spec.wholeWord ? stringWordTest(state.doc, state.charCategorizer(state.selection.main.head))(from, to, buffer, bufferPos) : true) &&
-      (spec.test ? spec.test(from, to, buffer, bufferPos) : true)
+      (wordTest ? wordTest(from, to, buffer, bufferPos) : true) &&
+      (spec.test ? spec.test(matchFromBuffer(state, from, to, buffer, bufferPos), state, from, to) : true)
     )
   }
   return new SearchCursor(
-    state.doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase(), 
-    spec.wholeWord || spec.test ? test : undefined)
+    state.doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase(),
+    wordTest || spec.test ? test : undefined)
+}
+
+function matchFromBuffer(state: EditorState, from: number, to: number, buffer: string, bufferPos: number) {
+  if (from >= bufferPos && to <= bufferPos + buffer.length)
+    return buffer.slice(from - bufferPos, to - bufferPos)
+  return state.doc.sliceString(from, to)
 }
 
 function stringWordTest(doc: Text, categorizer: (ch: string) => CharCategory) {
@@ -267,16 +274,17 @@ const enum RegExp { HighlightMargin = 250 }
 type RegExpResult = typeof RegExpCursor.prototype.value
 
 function regexpCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  const wordTest = spec.wholeWord ? regexpWordTest(state.charCategorizer(state.selection.main.head)) : undefined
   const test = (from: number, to: number, match: RegExpExecArray) => {
     return (
-      (spec.wholeWord ? regexpWordTest(state.charCategorizer(state.selection.main.head))(from, to, match) : true) &&
-      (spec.regexpTest ? spec.regexpTest(from, to, match) : true)
+      (wordTest ? wordTest(from, to, match) : true) &&
+      (spec.test ? spec.test(match[0], state, from, to) : true)
     )
   }
 
   return new RegExpCursor(state.doc, spec.search, {
     ignoreCase: !spec.caseSensitive,
-    test: spec.wholeWord || spec.regexpTest ? test : undefined
+    test: wordTest || spec.test ? test : undefined
   }, from, to)
 }
 
