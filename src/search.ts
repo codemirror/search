@@ -125,8 +125,9 @@ export class SearchQuery {
     /// Enable whole-word matching.
     wholeWord?: boolean
 
-    /// Optional function to filter matches. It is passed the matched
-    /// string, the editor state, and the match range.
+    /// Optional custom filter. It is passed the matched string, the
+    /// editor state, and the match range. Matches for which it
+    /// returns false will be ignored.
     test?: (match: string, state: EditorState, from: number, to: number) => boolean
   }) {
     this.search = config.search
@@ -185,23 +186,23 @@ abstract class QueryType<Result extends SearchResult = SearchResult> {
 
 const enum FindPrev { ChunkSize = 10000 }
 
-function stringCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
-  const wordTest = spec.wholeWord ? stringWordTest(state.doc, state.charCategorizer(state.selection.main.head)) : undefined
-  const test = (from: number, to: number, buffer: string, bufferPos: number) => {
-    return (
-      (wordTest ? wordTest(from, to, buffer, bufferPos) : true) &&
-      (spec.test ? spec.test(matchFromBuffer(state, from, to, buffer, bufferPos), state, from, to) : true)
-    )
+function wrapStringTest(test: (match: string, state: EditorState, from: number, to: number) => boolean,
+                        state: EditorState,
+                        inner: ((from: number, to: number, buffer: string, bufferPos: number) => boolean) | undefined) {
+  return (from: number, to: number, buffer: string, bufferPos: number) => {
+    if (inner && !inner(from, to, buffer, bufferPos)) return false
+    let match = from >= bufferPos && to <= bufferPos + buffer.length
+      ? buffer.slice(from - bufferPos, to - bufferPos)
+      : state.doc.sliceString(from, to)
+    return test(match, state, from, to)
   }
-  return new SearchCursor(
-    state.doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase(),
-    wordTest || spec.test ? test : undefined)
 }
 
-function matchFromBuffer(state: EditorState, from: number, to: number, buffer: string, bufferPos: number) {
-  if (from >= bufferPos && to <= bufferPos + buffer.length)
-    return buffer.slice(from - bufferPos, to - bufferPos)
-  return state.doc.sliceString(from, to)
+function stringCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  let test: ((from: number, to: number, buffer: string, bufferPos: number) => boolean) | undefined
+  if (spec.wholeWord) test = stringWordTest(state.doc, state.charCategorizer(state.selection.main.head))
+  if (spec.test) test = wrapStringTest(spec.test, state, test)
+  return new SearchCursor(state.doc, spec.unquoted, from, to, spec.caseSensitive ? undefined : x => x.toLowerCase(), test)
 }
 
 function stringWordTest(doc: Text, categorizer: (ch: string) => CharCategory) {
@@ -273,19 +274,19 @@ const enum RegExp { HighlightMargin = 250 }
 
 type RegExpResult = typeof RegExpCursor.prototype.value
 
-function regexpCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
-  const wordTest = spec.wholeWord ? regexpWordTest(state.charCategorizer(state.selection.main.head)) : undefined
-  const test = (from: number, to: number, match: RegExpExecArray) => {
-    return (
-      (wordTest ? wordTest(from, to, match) : true) &&
-      (spec.test ? spec.test(match[0], state, from, to) : true)
-    )
+function wrapRegexpTest(test: (match: string, state: EditorState, from: number, to: number) => boolean,
+                        state: EditorState,
+                        inner: ((from: number, to: number, match: RegExpExecArray) => boolean) | undefined) {
+  return (from: number, to: number, match: RegExpExecArray) => {
+    return (!inner || inner(from, to, match)) && test(match[0], state, from, to)
   }
+}
 
-  return new RegExpCursor(state.doc, spec.search, {
-    ignoreCase: !spec.caseSensitive,
-    test: wordTest || spec.test ? test : undefined
-  }, from, to)
+function regexpCursor(spec: SearchQuery, state: EditorState, from: number, to: number) {
+  let test: ((from: number, to: number, match: RegExpExecArray) => boolean) | undefined
+  if (spec.wholeWord) test = regexpWordTest(state.charCategorizer(state.selection.main.head))
+  if (spec.test) test = wrapRegexpTest(spec.test, state, test)
+  return new RegExpCursor(state.doc, spec.search, {ignoreCase: !spec.caseSensitive, test}, from, to)
 }
 
 function charBefore(str: string, index: number) {
