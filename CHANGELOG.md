@@ -1,3 +1,9 @@
+## 6.6.0 (2026-01-13)
+
+### New features
+
+Search queries now support a generic `test` field that can be used to implement custom tests on matches.
+
 ## 6.5.11 (2025-05-14)
 
 ### Bug fixes
