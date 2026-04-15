@@ -1,3 +1,5 @@
+**This repository has moved to https://code.haverbeke.berlin/codemirror/search**
+
 # @codemirror/search [![NPM version](https://img.shields.io/npm/v/@codemirror/search.svg)](https://www.npmjs.org/package/@codemirror/search)
 
 [ [**WEBSITE**](https://codemirror.net/) | [**DOCS**](https://codemirror.net/docs/ref/#search) | [**ISSUES**](https://code.haverbeke.berlin/codemirror/dev/issues) | [**FORUM**](https://discuss.codemirror.net/) | [**CHANGELOG**](https://code.haverbeke.berlin/codemirror/search/src/branch/main/CHANGELOG.md) ]
